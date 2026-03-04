@@ -22,7 +22,8 @@ const Dashboard = (() => {
     const greeting = UI.getGreeting();
     const nickname = profile.nickname || '';
     const today = new Date();
-    const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+    const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日（${dayNames[today.getDay()]}）`;
     html += `
       <div class="greeting-header">
         <h1>${greeting}${nickname ? '、' + nickname : ''}</h1>
@@ -48,6 +49,9 @@ const Dashboard = (() => {
     // --- 月間カレンダー ---
     html += _renderMonthlyCalendar();
 
+    // --- 部位別経過日数 ---
+    html += _renderBodyPartElapsed();
+
     // --- 週間サマリー ---
     html += `
       <div class="summary-grid">
@@ -70,7 +74,7 @@ const Dashboard = (() => {
     const emptyClass = recent.length === 0 ? 'empty-state-cta' : '';
     html += `
       <div class="${emptyClass}">
-        <button class="btn start-workout-btn" id="start-workout-btn" style="margin-bottom:16px;">💪 自由にワークアウトを開始</button>
+        <button class="btn start-workout-btn" id="start-workout-btn" style="margin-bottom:16px;">🏋️ ワークアウト開始 🏋️</button>
       </div>
     `;
 
@@ -189,6 +193,83 @@ const Dashboard = (() => {
     const remaining = (7 - (totalCells % 7)) % 7;
     for (let i = 1; i <= remaining; i++) {
       html += `<div class="dashboard-cal-cell other-month"><span class="cal-day-num">${i}</span></div>`;
+    }
+
+    html += `
+        </div>
+      </div>
+    `;
+    return html;
+  }
+
+  // --- 部位別経過日数 ---
+  function _renderBodyPartElapsed() {
+    const allWorkouts = DataManager.getRecentWorkouts(999);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 各部位の最終トレーニング日を取得
+    const categoryKeys = ['chest', 'back', 'shoulder', 'arms', 'legs', 'abs'];
+    const lastDates = {};
+
+    for (const w of allWorkouts) {
+      const cats = DataManager.getWorkoutCategories(w);
+      const wDate = w.date || DataManager.getTrainingDate(w.startTime);
+      for (const cat of cats) {
+        if (!categoryKeys.includes(cat)) continue;
+        if (!lastDates[cat] || wDate > lastDates[cat]) {
+          lastDates[cat] = wDate;
+        }
+      }
+    }
+
+    // 経過日数を計算して色分け
+    const getElapsedColor = (days) => {
+      if (days <= 2) return 'var(--color-success)';     // 緑：直近
+      if (days <= 4) return 'var(--color-primary)';     // 青：良好
+      if (days <= 7) return 'var(--color-gold)';        // 金：そろそろ
+      return 'var(--color-danger)';                     // 赤：やばい
+    };
+
+    const categoryEmoji = {
+      chest: '🫁', back: '🔙', shoulder: '💪',
+      arms: '💪', legs: '🦵', abs: '🎯',
+    };
+
+    let html = `
+      <div class="card" style="padding:16px; margin-bottom:20px;">
+        <h3 style="font-size:0.95rem; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+          📊 部位別 最終トレーニングからの経過日数
+        </h3>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+    `;
+
+    for (const cat of categoryKeys) {
+      const name = DataManager.CATEGORY_NAMES[cat];
+      const color = DataManager.CATEGORY_COLORS[cat];
+      let daysText, daysColor;
+
+      if (lastDates[cat]) {
+        const lastDate = new Date(lastDates[cat]);
+        lastDate.setHours(0, 0, 0, 0);
+        const diffMs = today - lastDate;
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        daysText = days === 0 ? '今日' : `${days}日前`;
+        daysColor = getElapsedColor(days);
+      } else {
+        daysText = '未記録';
+        daysColor = 'var(--color-text-hint)';
+      }
+
+      html += `
+        <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:10px 8px; text-align:center;">
+          <div style="font-size:0.7rem; color:var(--color-text-secondary); margin-bottom:4px; display:flex; align-items:center; justify-content:center; gap:4px;">
+            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${color};"></span>
+            ${name}
+          </div>
+          <div style="font-size:1rem; font-weight:700; color:${daysColor};">${daysText}</div>
+        </div>
+      `;
     }
 
     html += `
