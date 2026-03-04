@@ -783,15 +783,23 @@ body {
 .dashboard-cal-cell .cal-dots {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 2px;
   margin-top: 2px;
-  min-height: 5px;
+  min-height: 14px;
 }
 
 .dashboard-cal-cell .cal-dot {
-  width: 5px;
-  height: 5px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .summary-grid {
@@ -1575,16 +1583,25 @@ body {
 
 .calendar-cell .cal-dots {
   display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 2px;
-  margin-top: 2px;
   position: absolute;
-  bottom: 4px;
+  bottom: 2px;
+  width: 100%;
 }
 
 .calendar-cell .cal-dot {
-  width: 4px;
-  height: 4px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .calendar-month-nav {

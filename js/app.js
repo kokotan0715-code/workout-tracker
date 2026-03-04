@@ -28,7 +28,7 @@ const EventBus = (() => {
 // --- SPAルーター ---
 const Router = (() => {
     let _currentPage = 'dashboard';
-    const _pages = ['dashboard', 'workout', 'history', 'stats', 'settings'];
+    const _pages = ['dashboard', 'workout', 'history', 'stats', 'tools', 'settings'];
 
     function navigate(page) {
         if (!_pages.includes(page)) return;
@@ -60,6 +60,7 @@ const Router = (() => {
             case 'workout': Workout.render(); break;
             case 'history': History.render(); break;
             case 'stats': Stats.render(); break;
+            case 'tools': Tools.render(); break;
             case 'settings': Settings.render(); break;
         }
     }

@@ -243,6 +243,68 @@ const DataManager = (() => {
     return null;
   }
 
+  // AI推奨機能（1RM推定と最適重量提案）
+  function getAIRecommendation(exerciseId) {
+    const now = new Date();
+    let y = now.getFullYear(), m = now.getMonth() + 1;
+    let recentWorkoutsWithEx = [];
+
+    for (let i = 0; i < 6 && recentWorkoutsWithEx.length < 3; i++) {
+      const workouts = getWorkouts(y, m);
+      workouts.sort((a, b) => b.startTime - a.startTime);
+      for (const w of workouts) {
+        const ex = w.exercises.find(e => e.exerciseId === exerciseId);
+        if (ex && ex.sets && ex.sets.length > 0) {
+          const completedSets = ex.sets.filter(s => s.completed);
+          if (completedSets.length > 0) {
+            recentWorkoutsWithEx.push(completedSets);
+          }
+        }
+      }
+      m--;
+      if (m < 1) { m = 12; y--; }
+    }
+
+    if (recentWorkoutsWithEx.length === 0) return null;
+
+    let maxESTs = [];
+    for (const workoutSets of recentWorkoutsWithEx) {
+      let maxEST = 0;
+      for (const s of workoutSets) {
+        if (s.weight <= 0 || s.reps <= 0) continue;
+        // O'Conner式 / 日本の標準式: 1RM = Weight * (1 + Reps / 40)
+        const est = s.reps === 1 ? s.weight : s.weight * (1 + s.reps / 40);
+        if (est > maxEST) maxEST = est;
+      }
+      maxESTs.push(maxEST);
+    }
+
+    if (maxESTs.length === 0 || maxESTs[0] === 0) return null;
+
+    const currentEST = maxESTs[0];
+    // デフォルト: 筋肥大目的(約75%で10回)
+    let targetWeight = Math.round((currentEST * 0.75) / 2.5) * 2.5;
+    let targetReps = 10;
+    let isPlateau = false;
+
+    // プラトー判定: 3回分の記録があり、直近が古いもの以下で停滞している場合
+    if (maxESTs.length >= 3) {
+      if (maxESTs[0] <= maxESTs[1] && maxESTs[1] <= maxESTs[2]) {
+        isPlateau = true;
+        // ディロード（刺激の変化）提案
+        targetWeight = Math.round((currentEST * 0.65) / 2.5) * 2.5;
+        targetReps = 12;
+      }
+    }
+
+    return {
+      oneRM: Math.round(currentEST),
+      recommendedWeight: targetWeight,
+      recommendedReps: targetReps,
+      isPlateau: isPlateau
+    };
+  }
+
   // 指定期間のワークアウトを全取得
   function getWorkoutsInRange(startDate, endDate) {
     const results = [];
@@ -464,7 +526,7 @@ const DataManager = (() => {
     init, isFirstLaunch, markFirstLaunchDone,
     getProfile, saveProfile,
     getExercises, saveExercises, getExerciseById, addCustomExercise, deleteExercise, incrementUsageCount,
-    getWorkouts, saveWorkout, deleteWorkout, getRecentWorkouts, getPreviousRecord,
+    getWorkouts, saveWorkout, deleteWorkout, getRecentWorkouts, getPreviousRecord, getAIRecommendation,
     getWorkoutsInRange, getWorkoutsByDate,
     getActiveWorkout, saveActiveWorkout, clearActiveWorkout,
     getTemplates, saveTemplates, saveTemplate, deleteTemplate,

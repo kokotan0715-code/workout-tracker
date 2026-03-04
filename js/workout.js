@@ -107,14 +107,45 @@ const Workout = (() => {
         const exName = exInfo ? exInfo.name : '不明な種目';
         const cat = exInfo ? exInfo.category : 'other';
         const prevSets = DataManager.getPreviousRecord(exData.exerciseId);
+        const rec = DataManager.getAIRecommendation(exData.exerciseId);
+
+        let aiHtml = '';
+        if (rec) {
+            aiHtml = `
+              <div style="background:rgba(var(--color-primary-rgb),0.1); border:1px solid rgba(var(--color-primary-rgb),0.3); border-radius:var(--radius-sm); padding:6px 10px; margin-bottom:12px; font-size:0.75rem; line-height:1.4;">
+                <span style="color:var(--color-primary);font-weight:700;">🤖 AI推奨:</span> 
+                目標 <b style="font-size:0.875rem;">${rec.recommendedWeight}kg × ${rec.recommendedReps}回</b> 
+                <span style="color:var(--color-text-secondary);">(推定1RM: ${rec.oneRM}kg)</span>
+                ${rec.isPlateau ? '<br><span style="color:var(--color-gold);display:inline-block;margin-top:4px;">⚠️ 停滞気味のサインを検知。今日は少し重量を落として（ディロード）リフレッシュするのがおすすめです。</span>' : ''}
+              </div>
+            `;
+        }
+
+        // スーパーセットによるカードの連結スタイル
+        let cardStyle = '';
+        let headerStyle = 'margin-bottom:8px;';
+
+        // 自分がスーパーセットの始点（次の種目と繋がる）場合
+        if (exData.isSuperset) {
+            cardStyle += 'border-bottom: 2px dashed var(--color-primary); border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; box-shadow: none;';
+        }
+
+        // 前の種目がスーパーセットの始点（自分と繋がっている）場合
+        if (exIndex > 0 && _active.exercises[exIndex - 1].isSuperset) {
+            cardStyle += 'border-top: none; border-top-left-radius: 0; border-top-right-radius: 0; margin-top: 0; background: linear-gradient(to bottom, rgba(var(--color-primary-rgb), 0.05), var(--color-surface) 20px);';
+            headerStyle = 'margin-bottom:8px; padding-top: 8px; position:relative;';
+            // 連結アイコンを追加
+            aiHtml = `<div style="position:absolute; top:-16px; left:50%; transform:translateX(-50%); background:var(--color-primary); color:#000; font-size:0.7rem; padding:2px 8px; border-radius:12px; font-weight:bold; z-index:10;">🔗 スーパーセット</div>` + aiHtml;
+        }
 
         let html = `
-      <div class="card exercise-card" data-ex-index="${exIndex}">
-        <div class="exercise-card-header">
+      <div class="card exercise-card" data-ex-index="${exIndex}" style="${cardStyle}">
+        <div class="exercise-card-header" style="${headerStyle}">
           <h3>${exName}</h3>
           ${UI.categoryChipHTML(cat)}
-          <button class="exercise-menu-btn" data-ex-index="${exIndex}" aria-label="メニュー">⋮</button>
+          <button class="btn btn-ghost btn-icon exercise-menu-btn" data-ex-index="${exIndex}" aria-label="メニュー">⋮</button>
         </div>
+        ${aiHtml}
         <div class="set-table">
           <div class="set-table-header">
             <span>SET</span><span>前回</span><span>重量(kg)</span><span>回数</span><span></span>
@@ -139,7 +170,12 @@ const Workout = (() => {
             <span class="set-number">${s + 1}</span>
             <button class="btn-ghost btn-sm btn-icon drop-toggle-btn${set.isDropSet ? ' active' : ''}" data-action="toggle-drop" data-ex="${exIndex}" data-set="${s}" title="ドロップセット切替">📉</button>
           </div>
-          <span class="set-previous" style="line-height:1.2;">${prevText}</span>
+          <div class="set-info-col" style="display:flex; flex-direction:column; justify-content:center; padding-right:4px;">
+            <span class="set-previous" style="line-height:1.2;">${prevText}</span>
+            <span class="set-1rm-est" style="font-size:0.65rem; color:var(--color-gold); margin-top:2px;">
+              ${(set.weight > 0 && set.reps > 0) ? `推定: ${Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10}kg` : ''}
+            </span>
+          </div>
           <div class="set-input-group">
             <button class="btn-step" data-action="decrement-weight" data-ex="${exIndex}" data-set="${s}">−</button>
             <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.weight ?? ''}"
@@ -346,14 +382,13 @@ const Workout = (() => {
         });
 
         // --- Numpad 呼び出し ---
-        container.addEventListener('click', async (e) => {
+        document.body.addEventListener('click', async (e) => {
             if (e.target.classList.contains('numpad-trigger') && !e.target.disabled) {
-                // カスタムNumpadを開く
                 const exIdx = parseInt(e.target.dataset.ex);
                 const setIdx = parseInt(e.target.dataset.set);
                 const field = e.target.dataset.field; // 'weight' or 'reps'
-                const min = parseFloat(e.target.dataset.min);
-                const max = parseFloat(e.target.dataset.max);
+                const min = parseFloat(e.target.dataset.min) || 0;
+                const max = parseFloat(e.target.dataset.max) || 999;
                 const decimal = e.target.dataset.decimal === 'true';
                 const initialVal = e.target.value;
                 const title = field === 'weight' ? '重量 (kg)' : '回数 (回)';
@@ -361,9 +396,22 @@ const Workout = (() => {
                 const newVal = await UI.showNumpad(initialVal, title, { min, max, allowDecimal: decimal });
 
                 if (newVal !== null) {
-                    _active.exercises[exIdx].sets[setIdx][field] = newVal;
+                    _active.exercises[exIdx].sets[setIdx][field] = Number(newVal);
                     _save();
-                    e.target.value = newVal; // 再レンダリングせずに直接反映
+
+                    // Numpadからの反映も部分更新で行う
+                    e.target.value = newVal;
+                    const rowEl = e.target.closest('.set-row');
+                    if (rowEl) {
+                        const rmEstEl = rowEl.querySelector('.set-1rm-est');
+                        const set = _active.exercises[exIdx].sets[setIdx];
+                        if (rmEstEl && set.weight > 0 && set.reps > 0) {
+                            const est1RM = Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10;
+                            rmEstEl.textContent = `推定: ${est1RM}kg`;
+                        } else if (rmEstEl) {
+                            rmEstEl.textContent = '';
+                        }
+                    }
                 }
             }
         });
@@ -446,9 +494,21 @@ const Workout = (() => {
         if (field === 'reps') val = Math.max(1, Math.min(100, Math.round(val)));
         set[field] = val;
         _save();
-        // 入力フィールドを直接更新（フル再描画を避ける）
+
+        // --- DOM即時反映（フル再描画を回避） ---
         const input = document.querySelector(`input[data-field="${field}"][data-ex="${exIdx}"][data-set="${setIdx}"]`);
         if (input) input.value = val;
+
+        const rowEl = document.querySelector(`.set-row[data-ex-index="${exIdx}"][data-set-index="${setIdx}"]`);
+        if (rowEl) {
+            const rmEstEl = rowEl.querySelector('.set-1rm-est');
+            if (rmEstEl && set.weight > 0 && set.reps > 0) {
+                const est1RM = Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10;
+                rmEstEl.textContent = `推定: ${est1RM}kg`;
+            } else if (rmEstEl) {
+                rmEstEl.textContent = '';
+            }
+        }
     }
 
     function _toggleSet(exIdx, setIdx) {
@@ -511,21 +571,47 @@ const Workout = (() => {
     }
 
     function _showExerciseMenu(exIdx) {
+        const ex = _active.exercises[exIdx];
+        const isLinked = ex.isSuperset;
+        const canLink = exIdx < _active.exercises.length - 1; // 最後の種目でなければリンク可能
+
+        let linkBtnHTML = '';
+        if (canLink) {
+            linkBtnHTML = `<button class="btn btn-secondary btn-block" id="modal-toggle-superset" data-ex="${exIdx}">
+              ${isLinked ? '🔗 スーパーセットを解除' : '🔗 次の種目とスーパーセットを組む'}
+            </button>`;
+        } else if (isLinked) {
+            // 最後の種目なのにフラグが立っている場合のフェールセーフ
+            linkBtnHTML = `<button class="btn btn-secondary btn-block" id="modal-toggle-superset" data-ex="${exIdx}">🔗 スーパーセットを解除</button>`;
+        }
+
         UI.showModal(`
       <h2>種目の操作</h2>
       <div style="display:flex;flex-direction:column;gap:8px;">
+        ${linkBtnHTML}
         <button class="btn btn-danger btn-block" id="modal-delete-exercise" data-ex="${exIdx}">🗑️ この種目を削除</button>
         <button class="btn btn-secondary btn-block" id="modal-cancel">閉じる</button>
       </div>
     `);
-        // 削除ボタン
+
+        // 削除ボタンとスーパーセットボタンのイベント
         setTimeout(() => {
             document.getElementById('modal-delete-exercise')?.addEventListener('click', () => {
                 _active.exercises.splice(exIdx, 1);
+                // もし削除されたのがグループの一部なら、前の種目のリンクを解除するなどの処理が必要かもしれないが簡易的におく
+                if (exIdx > 0 && _active.exercises[exIdx - 1]) _active.exercises[exIdx - 1].isSuperset = false;
                 _save();
                 UI.closeModal(false);
                 _renderWorkoutUI();
                 UI.showToast('種目を削除しました', 'info');
+            });
+
+            document.getElementById('modal-toggle-superset')?.addEventListener('click', () => {
+                ex.isSuperset = !ex.isSuperset;
+                _save();
+                UI.closeModal(false);
+                _renderWorkoutUI();
+                UI.showToast(ex.isSuperset ? 'スーパーセットを組みました' : 'スーパーセットを解除しました', 'success');
             });
         }, 50);
     }
@@ -624,11 +710,28 @@ const Workout = (() => {
           </div>
         </div>
         ${prHTML}
-        <button class="btn btn-primary btn-block" id="modal-confirm">閉じる</button>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <a href="#" class="btn btn-secondary share-x-btn" style="flex:1;background:#000;color:#fff;border-color:#333;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:4px;">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:currentColor;"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg> ポスト
+          </a>
+          <button class="btn btn-primary" id="modal-confirm" style="flex:1;">完了</button>
+        </div>
       </div>
     `).then(() => {
             EventBus.emit('navigate', 'dashboard');
         });
+
+        setTimeout(() => {
+            const btn = document.querySelector('.share-x-btn');
+            if (btn) {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const text = `🏋️‍♂️ 本日のワークアウト完了！\n・${workout.exercises.length}種目 / ${totalSets}セット\n・総ボリューム: ${UI.formatVolume(totalVolume)} kg\n・時間: ${UI.formatDuration(duration)}\n\n`;
+                    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&hashtags=IronLog,筋トレ`;
+                    window.open(url, '_blank', 'width=550,height=420');
+                });
+            }
+        }, 50);
     }
 
     // --- タイマー ---
