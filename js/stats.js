@@ -56,6 +56,11 @@ const Stats = (() => {
         <div class="chart-container"><canvas id="chart-volume"></canvas></div>
       </div>
 
+      <h2 class="section-title">部位別リカバリー状況</h2>
+      <div class="card" style="margin-bottom:20px;padding:16px;">
+        <div id="recovery-status-container"></div>
+      </div>
+
       <h2 class="section-title">部位バランス（直近4週間）</h2>
       <div class="card" style="margin-bottom:20px;padding:16px;">
         <div class="chart-container"><canvas id="chart-balance"></canvas></div>
@@ -67,6 +72,7 @@ const Stats = (() => {
 
         container.innerHTML = html;
         _renderCharts();
+        _renderRecoveryStatus();
         _renderPRList();
         _bindEvents();
     }
@@ -232,6 +238,70 @@ const Stats = (() => {
                 },
             },
         });
+    }
+
+    function _renderRecoveryStatus() {
+        const container = document.getElementById('recovery-status-container');
+        if (!container) return;
+
+        const workouts = DataManager.getRecentWorkouts(30); // 直近30回分で判定
+        const lastTrained = {}; // { category: timestamp }
+
+        for (const w of workouts) {
+            for (const ex of w.exercises) {
+                if (!ex.sets.some(s => s.completed)) continue;
+                const info = DataManager.getExerciseById(ex.exerciseId);
+                if (info && info.category !== 'other') {
+                    if (!lastTrained[info.category] || w.startTime > lastTrained[info.category]) {
+                        lastTrained[info.category] = w.startTime;
+                    }
+                }
+            }
+        }
+
+        const now = Date.now();
+        const categories = DataManager.CATEGORIES.filter(c => c.id !== 'all' && c.id !== 'other');
+
+        let html = '<div class="recovery-list" style="display:flex;flex-direction:column;gap:12px;">';
+
+        categories.forEach(cat => {
+            const lastTime = lastTrained[cat.id];
+            let recoveryPercent = 100; // 未トレーニングなら100%回復
+            let statusText = '完全回復';
+            let barColor = 'var(--color-accent)';
+
+            if (lastTime) {
+                const hoursPassed = (now - lastTime) / (1000 * 60 * 60);
+                // 仮の計算論理: 72時間で100%回復すると仮定
+                recoveryPercent = Math.min(100, Math.round((hoursPassed / 72) * 100));
+
+                if (recoveryPercent < 40) {
+                    statusText = '疲労中';
+                    barColor = 'var(--color-danger)';
+                } else if (recoveryPercent < 80) {
+                    statusText = '回復中';
+                    barColor = 'var(--color-gold)';
+                } else {
+                    statusText = '良好';
+                    barColor = 'var(--color-primary)';
+                }
+            }
+
+            html += `
+                <div class="recovery-item">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:0.875rem;">
+                        <span style="font-weight:600;color:var(--color-${cat.id})">${cat.name}</span>
+                        <span style="color:var(--color-text-secondary);font-size:0.8125rem;">${statusText} (${recoveryPercent}%)</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.1);height:8px;border-radius:4px;overflow:hidden;">
+                        <div style="width:${recoveryPercent}%;height:100%;background:${barColor};border-radius:4px;transition:width 1s ease;"></div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
     }
 
     function _renderPRList() {

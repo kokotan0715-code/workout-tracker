@@ -11,6 +11,7 @@ const DataManager = (() => {
     PERSONAL_RECORDS: 'wt_personal_records',
     ACTIVE_WORKOUT: 'wt_active_workout',
     FIRST_LAUNCH: 'wt_first_launch_done',
+    TEMPLATES: 'wt_templates', // テンプレート用キー追加
   };
 
   // --- プリセット種目 ---
@@ -271,6 +272,23 @@ const DataManager = (() => {
   function saveActiveWorkout(data) { _set(KEYS.ACTIVE_WORKOUT, data); }
   function clearActiveWorkout() { _remove(KEYS.ACTIVE_WORKOUT); }
 
+  // --- テンプレート設定 ---
+  function getTemplates() { return _get(KEYS.TEMPLATES) || []; }
+  function saveTemplates(templates) { _set(KEYS.TEMPLATES, templates); }
+  function saveTemplate(template) {
+    const templates = getTemplates();
+    if (!template.id) template.id = `tpl_${Date.now()}`;
+    const idx = templates.findIndex(t => t.id === template.id);
+    if (idx >= 0) templates[idx] = template;
+    else templates.push(template);
+    saveTemplates(templates);
+    return template;
+  }
+  function deleteTemplate(id) {
+    const templates = getTemplates().filter(t => t.id !== id);
+    saveTemplates(templates);
+  }
+
   // --- PR ---
   function getPersonalRecords() { return _get(KEYS.PERSONAL_RECORDS) || {}; }
   function savePersonalRecords(prs) { _set(KEYS.PERSONAL_RECORDS, prs); }
@@ -401,7 +419,13 @@ const DataManager = (() => {
 
   // エクスポート
   function exportAllData() {
-    const data = { profile: getProfile(), exercises: getExercises(), personalRecords: getPersonalRecords(), workouts: {} };
+    const data = {
+      profile: getProfile(),
+      exercises: getExercises(),
+      personalRecords: getPersonalRecords(),
+      templates: getTemplates(),
+      workouts: {}
+    };
     // 全workoutキーを走査
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -417,6 +441,7 @@ const DataManager = (() => {
     if (data.profile) _set(KEYS.PROFILE, data.profile);
     if (data.exercises) _set(KEYS.EXERCISES, data.exercises);
     if (data.personalRecords) _set(KEYS.PERSONAL_RECORDS, data.personalRecords);
+    if (data.templates) _set(KEYS.TEMPLATES, data.templates);
     if (data.workouts) {
       for (const [key, val] of Object.entries(data.workouts)) {
         _set(key, val);
@@ -442,6 +467,7 @@ const DataManager = (() => {
     getWorkouts, saveWorkout, deleteWorkout, getRecentWorkouts, getPreviousRecord,
     getWorkoutsInRange, getWorkoutsByDate,
     getActiveWorkout, saveActiveWorkout, clearActiveWorkout,
+    getTemplates, saveTemplates, saveTemplate, deleteTemplate,
     getPersonalRecords, savePersonalRecords, checkAndUpdatePRs,
     calcWorkoutVolume, calcCompletedSets, calcDuration, getWorkoutCategories,
     getWeeklySummary, getTrainingDate,

@@ -946,11 +946,53 @@ body {
   align-items: center;
   padding: 6px 0;
   border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .set-row.completed {
   background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.set-row.drop-set {
+  background: rgba(255, 107, 53, 0.05);
+  /* Danger color with low opacity for drop sets */
+  border-left: 2px solid var(--color-danger);
+  padding-left: 8px;
+  /* Indent drop sets */
+}
+
+.set-row.drop-set.completed {
+  background: rgba(255, 107, 53, 0.15);
+}
+
+.set-number-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.drop-toggle-btn {
+  font-size: 0.65rem;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+  transition: opacity var(--transition-fast);
+}
+
+.drop-toggle-btn:hover {
+  opacity: 0.8;
+}
+
+.drop-toggle-btn.active {
+  opacity: 1;
+  background: rgba(var(--color-danger-rgb), 0.2);
+  color: var(--color-danger);
+  border-radius: 4px;
 }
 
 .set-number {

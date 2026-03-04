@@ -85,6 +85,12 @@ const UI = (() => {
 
     function startRestTimer(durationSec) {
         stopRestTimer();
+
+        // 権限リクエスト
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
         restTimerDuration = durationSec;
         restTimerEndTime = Date.now() + durationSec * 1000;
         const bar = document.getElementById('rest-timer-bar');
@@ -107,6 +113,18 @@ const UI = (() => {
             showToast('休憩終了！💪', 'info');
             // 振動 (対応端末)
             if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+            // Push Notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification('Iron Log', {
+                        body: '休憩時間が終了しました！次のセットにいきましょう。',
+                        icon: './icon-192.png',
+                        vibrate: [200, 100, 200],
+                        tag: 'rest-timer'
+                    });
+                });
+            }
         }
     }
 
@@ -225,11 +243,101 @@ const UI = (() => {
         return `<span class="chip chip-${category}">${name}</span>`;
     }
 
+    // --- カスタムテンキー (Numpad) ---
+    function showNumpad(initialValue, title = '数値を入力', options = {}) {
+        return new Promise(resolve => {
+            const { min = 0, max = 9999, allowDecimal = true } = options;
+            let currentVal = String(initialValue ?? '');
+
+            // 既存のnumpadがあれば削除
+            document.getElementById('custom-numpad-overlay')?.remove();
+
+            const overlay = document.createElement('div');
+            overlay.id = 'custom-numpad-overlay';
+            overlay.className = 'bottom-sheet-overlay visible'; // CSSは流用
+            overlay.style.zIndex = '400';
+
+            const numpadHTML = `
+                <div class="bottom-sheet" style="transform:translateY(0); transition:none; background:var(--color-bg-card);">
+                    <div style="padding:16px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="font-size:1rem;font-weight:600;color:var(--color-text-secondary);">${title}</h3>
+                        <button id="numpad-close" style="background:none;border:none;color:var(--color-text-hint);font-size:1.5rem;">×</button>
+                    </div>
+                    <div style="padding:20px; text-align:center;">
+                        <div id="numpad-display" style="font-size:2.5rem;font-weight:700;font-variant-numeric:tabular-nums;min-height:3rem;border-bottom:2px solid var(--color-primary);margin-bottom:24px;">
+                            ${currentVal || '0'}
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+                            ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button class="btn btn-secondary numpad-btn" data-val="${n}" style="height:60px;font-size:1.5rem;">${n}</button>`).join('')}
+                            <button class="btn btn-secondary numpad-btn" data-val="." style="height:60px;font-size:1.5rem;" ${!allowDecimal ? 'disabled' : ''}>.</button>
+                            <button class="btn btn-secondary numpad-btn" data-val="0" style="height:60px;font-size:1.5rem;">0</button>
+                            <button class="btn btn-secondary numpad-btn" data-val="del" style="height:60px;font-size:1.5rem;color:var(--color-danger);">⌫</button>
+                        </div>
+                        <button class="btn btn-primary btn-block btn-lg" id="numpad-confirm">決定</button>
+                    </div>
+                </div>
+            `;
+
+            overlay.innerHTML = numpadHTML;
+            document.body.appendChild(overlay);
+
+            const display = overlay.querySelector('#numpad-display');
+
+            function updateDisplay() {
+                display.textContent = currentVal || '0';
+            }
+
+            // イベントバインド
+            overlay.addEventListener('click', (e) => {
+                if (e.target.id === 'custom-numpad-overlay') {
+                    closeNumpad();
+                    resolve(null);
+                }
+            });
+
+            overlay.querySelector('#numpad-close').addEventListener('click', () => {
+                closeNumpad();
+                resolve(null);
+            });
+
+            overlay.querySelectorAll('.numpad-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const v = btn.dataset.val;
+                    if (v === 'del') {
+                        currentVal = currentVal.slice(0, -1);
+                    } else if (v === '.') {
+                        if (!currentVal.includes('.')) currentVal += currentVal ? '.' : '0.';
+                    } else {
+                        // 制限チェック（簡易）
+                        if (currentVal === '0') currentVal = v;
+                        else currentVal += v;
+
+                        const num = parseFloat(currentVal);
+                        if (num > max) currentVal = String(max);
+                    }
+                    updateDisplay();
+                });
+            });
+
+            overlay.querySelector('#numpad-confirm').addEventListener('click', () => {
+                let num = parseFloat(currentVal);
+                if (isNaN(num)) num = initialValue;
+                num = Math.max(min, Math.min(max, num));
+                closeNumpad();
+                resolve(num);
+            });
+
+            function closeNumpad() {
+                overlay.remove();
+            }
+        });
+    }
+
     return {
         showToast, showModal, closeModal, confirm,
         showBottomSheet, closeBottomSheet,
         startRestTimer, addRestTime, stopRestTimer,
-        showParticles,
+        showParticles, showNumpad,
         formatDuration, formatTimer, formatVolume, formatDate, getGreeting, categoryChipHTML,
     };
 })();

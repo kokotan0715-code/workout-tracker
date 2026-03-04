@@ -9,12 +9,29 @@ const Workout = (() => {
     let _isRunning = false;
 
     // --- ワークアウト開始 ---
-    function start() {
+    function start(options = null) {
         _active = {
             id: `w_${Date.now()}`,
             startTime: Date.now(),
             exercises: [],
         };
+
+        // テンプレートから開始する場合
+        if (options && options.template) {
+            const tpl = options.template;
+            tpl.exercises.forEach(exId => {
+                const prevSets = DataManager.getPreviousRecord(exId);
+                const defaultWeight = prevSets?.[0]?.weight ?? 20;
+                const defaultReps = prevSets?.[0]?.reps ?? 10;
+                _active.exercises.push({
+                    exerciseId: exId,
+                    sets: [{ weight: defaultWeight, reps: defaultReps, completed: false, isDropSet: false }],
+                    memo: '',
+                    showMemo: false,
+                });
+            });
+        }
+
         DataManager.saveActiveWorkout(_active);
         _isRunning = true;
         _renderWorkoutUI();
@@ -58,7 +75,7 @@ const Workout = (() => {
         <button class="btn btn-primary btn-lg" id="workout-start-idle">ワークアウトを開始</button>
       </div>
     `;
-        document.getElementById('workout-start-idle')?.addEventListener('click', () => start());
+        document.getElementById('workout-start-idle')?.addEventListener('click', () => start(null));
     }
 
     function _renderWorkoutUI() {
@@ -111,27 +128,31 @@ const Workout = (() => {
             if (prevSets) {
                 const pIdx = Math.min(s, prevSets.length - 1);
                 if (prevSets[pIdx]) {
-                    prevText = `${prevSets[pIdx].weight}×${prevSets[pIdx].reps}`;
+                    prevText = `${prevSets[pIdx].weight}×${prevSets[pIdx].reps}${prevSets[pIdx].isDropSet ? '<br><span style="font-size:0.65rem;color:var(--color-text-hint)">[ドロップ]</span>' : ''}`;
                 }
             }
 
+            const rowClass = `set-row${set.completed ? ' completed' : ''}${set.isDropSet ? ' drop-set' : ''}`;
             html += `
-        <div class="set-row${set.completed ? ' completed' : ''}" data-ex-index="${exIndex}" data-set-index="${s}">
-          <span class="set-number">${s + 1}</span>
-          <span class="set-previous">${prevText}</span>
+        <div class="${rowClass}" data-ex-index="${exIndex}" data-set-index="${s}">
+          <div class="set-number-col">
+            <span class="set-number">${s + 1}</span>
+            <button class="btn-ghost btn-sm btn-icon drop-toggle-btn${set.isDropSet ? ' active' : ''}" data-action="toggle-drop" data-ex="${exIndex}" data-set="${s}" title="ドロップセット切替">📉</button>
+          </div>
+          <span class="set-previous" style="line-height:1.2;">${prevText}</span>
           <div class="set-input-group">
             <button class="btn-step" data-action="decrement-weight" data-ex="${exIndex}" data-set="${s}">−</button>
-            <input type="number" class="input-field input-number" value="${set.weight ?? ''}"
+            <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.weight ?? ''}"
               data-field="weight" data-ex="${exIndex}" data-set="${s}"
-              min="0" max="500" step="${DataManager.getProfile().weightStep}" placeholder="kg"
+              data-min="0" data-max="500" data-decimal="true" placeholder="kg" readonly
               ${set.completed ? 'disabled' : ''}>
             <button class="btn-step" data-action="increment-weight" data-ex="${exIndex}" data-set="${s}">+</button>
           </div>
           <div class="set-input-group">
             <button class="btn-step" data-action="decrement-reps" data-ex="${exIndex}" data-set="${s}">−</button>
-            <input type="number" class="input-field input-number" value="${set.reps ?? ''}"
+            <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.reps ?? ''}"
               data-field="reps" data-ex="${exIndex}" data-set="${s}"
-              min="1" max="100" step="1" placeholder="回"
+              data-min="1" data-max="100" data-decimal="false" placeholder="回" readonly
               ${set.completed ? 'disabled' : ''}>
             <button class="btn-step" data-action="increment-reps" data-ex="${exIndex}" data-set="${s}">+</button>
           </div>
@@ -289,7 +310,7 @@ const Workout = (() => {
 
         _active.exercises.push({
             exerciseId,
-            sets: [{ weight: defaultWeight, reps: defaultReps, completed: false }],
+            sets: [{ weight: defaultWeight, reps: defaultReps, completed: false, isDropSet: false }],
             memo: '',
             showMemo: false,
         });
@@ -320,23 +341,40 @@ const Workout = (() => {
                 case 'decrement-reps': _adjustValue(exIdx, setIdx, 'reps', -1); break;
                 case 'toggle-set': _toggleSet(exIdx, setIdx); break;
                 case 'add-set': _addSet(exIdx); break;
+                case 'toggle-drop': _toggleDropSet(exIdx, setIdx); break;
             }
         });
 
-        // 入力値の変更
-        container.addEventListener('change', (e) => {
-            if (e.target.dataset.field === 'weight' || e.target.dataset.field === 'reps') {
+        // --- Numpad 呼び出し ---
+        container.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('numpad-trigger') && !e.target.disabled) {
+                // カスタムNumpadを開く
                 const exIdx = parseInt(e.target.dataset.ex);
                 const setIdx = parseInt(e.target.dataset.set);
-                let val = parseFloat(e.target.value);
-                if (e.target.dataset.field === 'weight') {
-                    val = Math.max(0, Math.min(500, isNaN(val) ? 0 : val));
-                } else {
-                    val = Math.max(1, Math.min(100, isNaN(val) ? 1 : Math.round(val)));
+                const field = e.target.dataset.field; // 'weight' or 'reps'
+                const min = parseFloat(e.target.dataset.min);
+                const max = parseFloat(e.target.dataset.max);
+                const decimal = e.target.dataset.decimal === 'true';
+                const initialVal = e.target.value;
+                const title = field === 'weight' ? '重量 (kg)' : '回数 (回)';
+
+                const newVal = await UI.showNumpad(initialVal, title, { min, max, allowDecimal: decimal });
+
+                if (newVal !== null) {
+                    _active.exercises[exIdx].sets[setIdx][field] = newVal;
+                    _save();
+                    e.target.value = newVal; // 再レンダリングせずに直接反映
                 }
-                e.target.value = val;
-                _active.exercises[exIdx].sets[setIdx][e.target.dataset.field] = val;
-                _save();
+            }
+        });
+
+        // 既存の change, keydown リスナーは fallback/メモ用に残すが
+        // input-number クラスから readonly を付けたためキーボード入力には反応しない。
+
+        // 入力値の変更（主にメモ等）
+        container.addEventListener('change', (e) => {
+            if (e.target.dataset.field === 'weight' || e.target.dataset.field === 'reps') {
+                // Numpadで処理されるため基本呼ばれない
             }
         });
 
@@ -450,6 +488,14 @@ const Workout = (() => {
         _renderWorkoutUI();
     }
 
+    function _toggleDropSet(exIdx, setIdx) {
+        const set = _active.exercises[exIdx]?.sets[setIdx];
+        if (!set) return;
+        set.isDropSet = !set.isDropSet;
+        _save();
+        _renderWorkoutUI();
+    }
+
     function _addSet(exIdx) {
         const ex = _active.exercises[exIdx];
         if (!ex) return;
@@ -458,6 +504,7 @@ const Workout = (() => {
             weight: lastSet?.weight ?? 20,
             reps: lastSet?.reps ?? 10,
             completed: false,
+            isDropSet: false
         });
         _save();
         _renderWorkoutUI();

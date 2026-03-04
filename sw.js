@@ -66,3 +66,24 @@ self.addEventListener('fetch', (event) => {
         })
     );
 });
+
+// 通知クリック時のイベント
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    // 通知をクリックしたらアプリ（ワークアウト画面など）を開く/フォーカスする
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            // 既に開いているタブがあればフォーカス
+            for (let client of windowClients) {
+                if (client.url.includes('/workout-tracker/') && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            // なければ新しく開く
+            if (clients.openWindow) {
+                return clients.openWindow('./index.html');
+            }
+        })
+    );
+});

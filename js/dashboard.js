@@ -14,6 +14,7 @@ const Dashboard = (() => {
     const active = DataManager.getActiveWorkout();
     const summary = DataManager.getWeeklySummary();
     const recent = DataManager.getRecentWorkouts(5);
+    const templates = DataManager.getTemplates();
 
     let html = '';
 
@@ -69,9 +70,24 @@ const Dashboard = (() => {
     const emptyClass = recent.length === 0 ? 'empty-state-cta' : '';
     html += `
       <div class="${emptyClass}">
-        <button class="btn start-workout-btn" id="start-workout-btn">💪 ワークアウトを開始</button>
+        <button class="btn start-workout-btn" id="start-workout-btn" style="margin-bottom:16px;">💪 自由にワークアウトを開始</button>
       </div>
     `;
+
+    // --- ルーティン（テンプレート）から開始 ---
+    if (templates.length > 0) {
+      html += `<h2 class="section-title">ルーティンから開始</h2>
+               <div class="template-list" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:16px;margin-bottom:16px;">`;
+      for (const t of templates) {
+        html += `
+          <div class="card card-compact card-clickable start-template-btn" data-id="${t.id}" style="min-width:140px;flex:0 0 auto;border:1px solid var(--color-border);">
+            <div style="font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
+            <div style="font-size:0.75rem;color:var(--color-text-secondary);">${t.exercises.length}種目</div>
+          </div>
+        `;
+      }
+      html += `</div>`;
+    }
 
     if (recent.length === 0) {
       html += `<p style="text-align:center;color:var(--color-text-secondary);margin-bottom:32px;">最初のワークアウトを記録しよう！</p>`;
@@ -199,9 +215,23 @@ const Dashboard = (() => {
     const startBtn = document.getElementById('start-workout-btn');
     if (startBtn) {
       startBtn.addEventListener('click', () => {
-        EventBus.emit('start-workout');
+        // nullを渡すと空の状態で開始
+        EventBus.emit('start-workout', null);
       });
     }
+
+    // テンプレートから開始
+    document.querySelectorAll('.start-template-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tplId = btn.dataset.id;
+        const templates = DataManager.getTemplates();
+        const tpl = templates.find(t => t.id === tplId);
+        if (tpl) {
+          // テンプレートデータを渡して開始
+          EventBus.emit('start-workout', { template: tpl });
+        }
+      });
+    });
 
     // 復帰
     const resumeBtn = document.getElementById('resume-workout-btn');
