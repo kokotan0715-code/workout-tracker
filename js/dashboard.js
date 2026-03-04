@@ -52,6 +52,9 @@ const Dashboard = (() => {
     // --- 部位別経過日数 ---
     html += _renderBodyPartElapsed();
 
+    // --- BIG3 推定MAX ---
+    html += _renderBig3Max();
+
     // --- 週間サマリー ---
     html += `
       <div class="summary-grid">
@@ -273,6 +276,71 @@ const Dashboard = (() => {
     }
 
     html += `
+        </div>
+      </div>
+    `;
+    return html;
+  }
+
+  // --- BIG3 推定MAX表示 ---
+  function _renderBig3Max() {
+    const allWorkouts = DataManager.getRecentWorkouts(999);
+
+    // BIG3の種目ID（名前でもマッチさせる）
+    const big3 = [
+      { id: 'chest_001', name: 'ベンチプレス', label: 'BENCH', emoji: '🏋️', max: 0 },
+      { id: 'legs_001', name: 'スクワット', label: 'SQUAT', emoji: '🦵', max: 0 },
+      { id: 'back_001', name: 'デッドリフト', label: 'DEAD', emoji: '💀', max: 0 },
+    ];
+
+    // 全ワークアウトからBIG3の最高推定1RMを算出
+    for (const w of allWorkouts) {
+      for (const ex of w.exercises) {
+        const matchIdx = big3.findIndex(b =>
+          ex.exerciseId === b.id || ex.name === b.name
+        );
+        if (matchIdx === -1) continue;
+
+        for (const set of ex.sets) {
+          if (!set.completed || !set.weight || !set.reps) continue;
+          const est1RM = set.reps === 1
+            ? set.weight
+            : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10;
+          if (est1RM > big3[matchIdx].max) {
+            big3[matchIdx].max = est1RM;
+          }
+        }
+      }
+    }
+
+    const total = Math.round((big3[0].max + big3[1].max + big3[2].max) * 10) / 10;
+
+    let html = `
+      <div class="card" style="padding:16px; margin-bottom:20px; border:1px solid rgba(255,215,0,0.3); background:linear-gradient(135deg, rgba(255,215,0,0.05), rgba(255,165,0,0.05));">
+        <h3 style="font-size:0.95rem; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+          👑 BIG3 推定MAX
+        </h3>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:12px;">
+    `;
+
+    for (const b of big3) {
+      html += `
+        <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:10px 8px; text-align:center;">
+          <div style="font-size:0.65rem; color:var(--color-text-secondary); margin-bottom:2px;">${b.emoji} ${b.name}</div>
+          <div style="font-size:1.2rem; font-weight:800; color:${b.max > 0 ? 'var(--color-gold)' : 'var(--color-text-hint)'};">
+            ${b.max > 0 ? b.max + '<span style="font-size:0.7rem;font-weight:400;">kg</span>' : '---'}
+          </div>
+        </div>
+      `;
+    }
+
+    html += `
+        </div>
+        <div style="background:linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.15)); border:1px solid rgba(255,215,0,0.3); border-radius:var(--radius-md); padding:12px; text-align:center;">
+          <div style="font-size:0.75rem; color:var(--color-text-secondary); margin-bottom:2px;">🏆 BIG3 合計</div>
+          <div style="font-size:1.6rem; font-weight:900; color:var(--color-gold);">
+            ${total > 0 ? total + '<span style="font-size:0.85rem;font-weight:400;"> kg</span>' : '--- kg'}
+          </div>
         </div>
       </div>
     `;
