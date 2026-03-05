@@ -940,7 +940,7 @@ body {
 
 .set-table-header {
   display: grid;
-  grid-template-columns: 40px 1fr 1fr 1fr 44px;
+  grid-template-columns: 32px 1fr 1.5fr 1fr 32px;
   gap: 4px;
   padding: 4px 0;
   font-size: 0.6875rem;
@@ -952,7 +952,7 @@ body {
 
 .set-row {
   display: grid;
-  grid-template-columns: 40px 1fr 1fr 1fr 44px;
+  grid-template-columns: 32px 1fr 1.5fr 1fr 32px;
   gap: 4px;
   align-items: center;
   padding: 6px 0;

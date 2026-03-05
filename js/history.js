@@ -80,13 +80,13 @@ const History = (() => {
       </div>
     `;
 
-    const dayHeaders = ['月', '火', '水', '木', '金', '土', '日'];
+    const dayHeaders = ['日', '月', '火', '水', '木', '金', '土'];
     html += '<div class="calendar-grid">';
     dayHeaders.forEach(d => html += `<div class="calendar-header-cell">${d}</div>`);
 
     const firstDay = new Date(_calYear, _calMonth - 1, 1);
     const lastDay = new Date(_calYear, _calMonth, 0);
-    const startDayOfWeek = (firstDay.getDay() + 6) % 7; // 月曜始まり
+    const startDayOfWeek = firstDay.getDay(); // 日曜始まり (0=日)
     const todayStr = new Date().toISOString().split('T')[0];
 
     // 月のワークアウト取得
@@ -124,9 +124,11 @@ const History = (() => {
     }
 
     // 翌月の空セル
-    const endDayOfWeek = (lastDay.getDay() + 6) % 7;
-    for (let i = endDayOfWeek + 1; i < 7; i++) {
-      html += `<div class="calendar-cell other-month"><span>${i - endDayOfWeek}</span></div>`;
+    const endDayOfWeek = lastDay.getDay();
+    if (endDayOfWeek !== 6) { // 土曜日で終わっていない場合
+      for (let i = endDayOfWeek + 1; i <= 6; i++) {
+        html += `<div class="calendar-cell other-month"><span>${i - endDayOfWeek}</span></div>`;
+      }
     }
 
     html += '</div>';
@@ -190,7 +192,9 @@ const History = (() => {
 
     setTimeout(() => {
       document.getElementById('modal-delete-workout')?.addEventListener('click', async () => {
-        UI.closeModal(false);
+        UI.closeModal(false); // 最初のモーダルを閉じる
+        await new Promise(r => setTimeout(r, 350)); // モーダルが閉じてアニメーション完了するのを待つ
+
         const confirmResult = await UI.showModal(`
           <h2>ワークアウトを削除</h2>
           <p>この記録を完全に削除しますか？元に戻せません。</p>

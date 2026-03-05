@@ -170,36 +170,37 @@ const Workout = (() => {
         <div class="${rowClass}" data-ex-index="${exIndex}" data-set-index="${s}">
           <div class="set-number-col">
             <span class="set-number">${s + 1}</span>
-            <div style="display:flex; gap:2px; margin-top:2px;">
-              <button class="btn-ghost btn-sm btn-icon drop-toggle-btn${set.isDropSet ? ' active' : ''}" data-action="toggle-drop" data-ex="${exIndex}" data-set="${s}" title="ドロップセット切替" style="width:20px;height:20px;font-size:0.6rem;">📉</button>
-              <button class="btn-ghost btn-sm btn-icon" data-action="delete-set" data-ex="${exIndex}" data-set="${s}" title="セット削除" style="width:20px;height:20px;font-size:0.6rem;color:var(--color-danger);opacity:0.7;">✖</button>
-            </div>
           </div>
           <div class="set-info-col" style="display:flex; flex-direction:column; justify-content:center; padding-right:4px;">
             <span class="set-previous" style="line-height:1.2;">${prevText}</span>
-          <div class="set-input-group" style="justify-content:center; flex-direction:row; align-items:center; gap:8px;">
-            <div style="position:relative; display:inline-block; width:45%;">
+          </div>
+          <div class="set-input-group" style="justify-content:center; flex-direction:row; align-items:center; gap:4px;">
+            <div style="position:relative; display:inline-block; width:50%;">
               <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.weight ?? ''}"
                 data-field="weight" data-ex="${exIndex}" data-set="${s}"
                 data-min="0" data-max="999" data-decimal="true" readonly
-                style="padding-right:24px; text-align:right;">
-              <span style="position:absolute; right:8px; top:50%; transform:translateY(-50%); color:var(--color-text-hint); font-size:0.8rem; pointer-events:none;">kg</span>
+                style="padding-right:20px; text-align:right;">
+              <span style="position:absolute; right:4px; top:50%; transform:translateY(-50%); color:var(--color-text-hint); font-size:0.75rem; pointer-events:none;">kg</span>
             </div>
-            <div style="position:relative; display:inline-block; width:45%;">
+            <span style="color:var(--color-text-hint); font-size:0.75rem;">✖️</span>
+            <div style="position:relative; display:inline-block; width:40%;">
               <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.reps ?? ''}"
                 data-field="reps" data-ex="${exIndex}" data-set="${s}"
                 data-min="1" data-max="100" data-decimal="false" readonly
-                style="padding-right:24px; text-align:right;">
-              <span style="position:absolute; right:8px; top:50%; transform:translateY(-50%); color:var(--color-text-hint); font-size:0.8rem; pointer-events:none;">回</span>
+                style="padding-right:20px; text-align:right;">
+              <span style="position:absolute; right:4px; top:50%; transform:translateY(-50%); color:var(--color-text-hint); font-size:0.75rem; pointer-events:none;">回</span>
             </div>
           </div>
-          <div style="display:flex; flex-direction:column; align-items:center;">
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
              <button class="btn btn-ghost btn-icon btn-sm"
               data-action="start-timer" data-ex="${exIndex}" data-set="${s}"
-              aria-label="タイマー起動" style="color:var(--color-primary); font-size:1.2rem; padding:0; height:36px; width:36px;">🕒</button>
-             <span class="set-1rm-est" style="font-size:0.6rem; color:var(--color-gold); margin-top:2px;">
+              aria-label="タイマー起動" style="color:var(--color-primary); font-size:1.1rem; padding:0; height:28px; width:28px;">🕒</button>
+             <span class="set-1rm-est" style="font-size:0.55rem; color:var(--color-gold); margin-top:2px;">
                  ${(set.weight > 0 && set.reps > 0) ? `RM: ${Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10}kg` : ''}
              </span>
+          </div>
+          <div style="display:flex; justify-content:center; align-items:center;">
+             <button class="btn-ghost btn-sm btn-icon" data-action="delete-set" data-ex="${exIndex}" data-set="${s}" title="セット削除" style="width:24px;height:24px;font-size:0.8rem;color:var(--color-danger);opacity:0.7;">❌</button>
           </div>
         </div>
       `;

@@ -112,8 +112,8 @@ const Dashboard = (() => {
     const todayStr = today.toISOString().split('T')[0];
     const firstDay = new Date(_calYear, _calMonth - 1, 1);
     const lastDay = new Date(_calYear, _calMonth, 0);
-    const startDayOfWeek = (firstDay.getDay() + 6) % 7; // 月曜始まり
-    const dayHeaders = ['月', '火', '水', '木', '金', '土', '日'];
+    const startDayOfWeek = firstDay.getDay(); // 日曜始まり (0=日)
+    const dayHeaders = ['日', '月', '火', '水', '木', '金', '土'];
 
     // 月のワークアウトを取得
     const monthWorkouts = DataManager.getWorkouts(_calYear, _calMonth);
@@ -138,7 +138,7 @@ const Dashboard = (() => {
 
     // 曜日・週間ボリュームヘッダー
     dayHeaders.forEach((d, i) => {
-      const isSat = i === 5, isSun = i === 6;
+      const isSat = i === 6, isSun = i === 0;
       const color = isSun ? 'var(--color-danger)' : isSat ? 'var(--color-primary)' : 'var(--color-text-hint)';
       html += `<div class="calendar-header-cell" style="color:${color}">${d}</div>`;
     });
@@ -157,19 +157,18 @@ const Dashboard = (() => {
       }
       cellCount++;
 
-      // 日曜日（週の終わり）に到達したらボリューム列を追加
+      // 土曜日（週の終わり）に到達したらボリューム列を追加
       if (cellCount % 7 === 0) {
-        html += `<div class="dashboard-cal-cell" style="display:flex; align-items:center; justify-content:center; font-size:0.75rem; color:var(--color-text-secondary); font-variant-numeric: tabular-nums;">${UI.formatVolume(currentWeekVolume)}kg</div>`;
-        currentWeekVolume = 0; // 次の週のためにリセット
+        html += `<div class="calendar-cell volume-cell"><span>${currentWeekVolume > 0 ? (currentWeekVolume >= 1000 ? (currentWeekVolume / 1000).toFixed(1) + 'k' : currentWeekVolume) : ''}</span></div>`;
+        currentWeekVolume = 0; // 次の週へリセット
       }
     };
 
-    // 前月の空セル
-    const prevMonth = new Date(_calYear, _calMonth - 2, 1);
-    const prevLastDay = new Date(_calYear, _calMonth - 1, 0).getDate();
+    // 前月の余白
     for (let i = 0; i < startDayOfWeek; i++) {
-      const day = prevLastDay - startDayOfWeek + 1 + i;
-      addCell(`<div class="dashboard-cal-cell other-month"><span class="cal-day-num">${day}</span></div>`);
+      const d = new Date(firstDay);
+      d.setDate(d.getDate() - (startDayOfWeek - i));
+      addCell(`<div class="calendar-cell other-month"><span>${d.getDate()}</span></div>`);
     }
 
     // 当月のセル
@@ -189,11 +188,12 @@ const Dashboard = (() => {
         `, dateStr);
     }
 
-    // 翌月の空セル
-    const totalCells = startDayOfWeek + lastDay.getDate();
-    const remaining = (7 - (totalCells % 7)) % 7;
-    for (let i = 1; i <= remaining; i++) {
-      addCell(`<div class="dashboard-cal-cell other-month"><span class="cal-day-num">${i}</span></div>`);
+    // 翌月の余白と最終週のボリューム
+    const endDayOfWeek = lastDay.getDay(); // 0-6 日-土
+    if (endDayOfWeek !== 6) { // 土曜日で終わっていない場合
+      for (let i = endDayOfWeek + 1; i <= 6; i++) {
+        addCell(`<div class="calendar-cell other-month"><span>${i - endDayOfWeek}</span></div>`);
+      }
     }
 
     html += `
