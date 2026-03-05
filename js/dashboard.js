@@ -18,16 +18,13 @@ const Dashboard = (() => {
 
     let html = '';
 
-    // --- 挨拶ヘッダー ---
-    const greeting = UI.getGreeting();
-    const nickname = profile.nickname || '';
+    // --- 挨拶ヘッダー（日付のみ残す） ---
     const today = new Date();
     const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
     const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日（${dayNames[today.getDay()]}）`;
     html += `
       <div class="greeting-header">
-        <h1>${greeting}${nickname ? '、' + nickname : ''}</h1>
-        <div class="date-text">${dateStr}</div>
+        <div class="date-text" style="font-size:1.2rem; font-weight:700; color:var(--color-primary);">${dateStr}</div>
       </div>
     `;
 
@@ -96,9 +93,7 @@ const Dashboard = (() => {
       html += `</div>`;
     }
 
-    if (recent.length === 0) {
-      html += `<p style="text-align:center;color:var(--color-text-secondary);margin-bottom:32px;">最初のワークアウトを記録しよう！</p>`;
-    }
+    // 最初のワークアウトを記録しようメッセージを削除
 
     // --- 最近のワークアウト ---
     if (recent.length > 0) {
@@ -184,7 +179,7 @@ const Dashboard = (() => {
       const hasWorkout = dayWorkouts.length > 0;
 
       html += `
-          <div class="dashboard-cal-cell${isToday ? ' today' : ''}${hasWorkout ? ' has-workout' : ''}">
+          <div class="dashboard-cal-cell${isToday ? ' today' : ''}${hasWorkout ? ' has-workout' : ''}" data-date="${dateStr}">
             <span class="cal-day-num">${d}</span>
             ${hasWorkout ? `<div class="cal-dots">${[...cats].slice(0, 3).map(c => `<div class="cal-dot" style="background:${DataManager.CATEGORY_COLORS[c] || 'var(--color-other)'}">${DataManager.CATEGORY_NAMES[c] ? DataManager.CATEGORY_NAMES[c][0] : ''}</div>`).join('')}</div>` : ''}
           </div>
@@ -410,10 +405,25 @@ const Dashboard = (() => {
       });
     }
 
+    // カレンダーセルクリック
+    document.querySelectorAll('.dashboard-cal-cell.has-workout').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const dateStr = cell.dataset.date;
+        if (dateStr) {
+           EventBus.emit('navigate-date', dateStr);
+        }
+      });
+    });
+
     // 最近のワークアウトクリック
     document.querySelectorAll('.recent-workout-card').forEach(card => {
       card.addEventListener('click', () => {
-        EventBus.emit('navigate', 'history');
+        const dateStr = card.dataset.date;
+        if (dateStr) {
+          EventBus.emit('navigate-date', dateStr);
+        } else {
+          EventBus.emit('navigate', 'history');
+        }
       });
     });
   }

@@ -20,12 +20,9 @@ const Workout = (() => {
         if (options && options.template) {
             const tpl = options.template;
             tpl.exercises.forEach(exId => {
-                const prevSets = DataManager.getPreviousRecord(exId);
-                const defaultWeight = prevSets?.[0]?.weight ?? 20;
-                const defaultReps = prevSets?.[0]?.reps ?? 10;
                 _active.exercises.push({
                     exerciseId: exId,
-                    sets: [{ weight: defaultWeight, reps: defaultReps, completed: false, isDropSet: false }],
+                    sets: [{ weight: '', reps: '', completed: false, isDropSet: false }],
                     memo: '',
                     showMemo: false,
                 });
@@ -176,21 +173,17 @@ const Workout = (() => {
               ${(set.weight > 0 && set.reps > 0) ? `推定: ${Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10}kg` : ''}
             </span>
           </div>
-          <div class="set-input-group">
-            <button class="btn-step" data-action="decrement-weight" data-ex="${exIndex}" data-set="${s}">−</button>
+          <div class="set-input-group" style="justify-content:center;">
             <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.weight ?? ''}"
               data-field="weight" data-ex="${exIndex}" data-set="${s}"
               data-min="0" data-max="500" data-decimal="true" placeholder="kg" readonly
               ${set.completed ? 'disabled' : ''}>
-            <button class="btn-step" data-action="increment-weight" data-ex="${exIndex}" data-set="${s}">+</button>
           </div>
-          <div class="set-input-group">
-            <button class="btn-step" data-action="decrement-reps" data-ex="${exIndex}" data-set="${s}">−</button>
+          <div class="set-input-group" style="justify-content:center;">
             <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.reps ?? ''}"
               data-field="reps" data-ex="${exIndex}" data-set="${s}"
               data-min="1" data-max="100" data-decimal="false" placeholder="回" readonly
               ${set.completed ? 'disabled' : ''}>
-            <button class="btn-step" data-action="increment-reps" data-ex="${exIndex}" data-set="${s}">+</button>
           </div>
           <button class="set-check-btn${set.completed ? ' checked' : ''}"
             data-action="toggle-set" data-ex="${exIndex}" data-set="${s}"
@@ -339,14 +332,9 @@ const Workout = (() => {
 
     // --- 種目追加 ---
     function _addExercise(exerciseId) {
-        const profile = DataManager.getProfile();
-        const prevSets = DataManager.getPreviousRecord(exerciseId);
-        const defaultWeight = prevSets?.[0]?.weight ?? 20;
-        const defaultReps = prevSets?.[0]?.reps ?? 10;
-
         _active.exercises.push({
             exerciseId,
-            sets: [{ weight: defaultWeight, reps: defaultReps, completed: false, isDropSet: false }],
+            sets: [{ weight: '', reps: '', completed: false, isDropSet: false }],
             memo: '',
             showMemo: false,
         });
@@ -421,8 +409,10 @@ const Workout = (() => {
 
         // 入力値の変更（主にメモ等）
         container.addEventListener('change', (e) => {
-            if (e.target.dataset.field === 'weight' || e.target.dataset.field === 'reps') {
-                // Numpadで処理されるため基本呼ばれない
+            if (e.target.dataset.field === 'memo') {
+                const exIdx = parseInt(e.target.dataset.ex);
+                _active.exercises[exIdx].memo = e.target.value;
+                _save();
             }
         });
 
@@ -443,16 +433,14 @@ const Workout = (() => {
             }
         });
 
-        // メモ変更
+        // メモ変更はEvent委任でキャプチャ
         container.addEventListener('input', (e) => {
             if (e.target.dataset.field === 'memo') {
                 const exIdx = parseInt(e.target.dataset.ex);
                 _active.exercises[exIdx].memo = e.target.value;
+                _save();
             }
         });
-        container.addEventListener('blur', (e) => {
-            if (e.target.dataset.field === 'memo') _save();
-        }, true);
 
         // 種目メニュー
         container.addEventListener('click', (e) => {
@@ -462,28 +450,6 @@ const Workout = (() => {
             }
         });
 
-        // ±ボタン長押し（加速）
-        let holdInterval = null;
-        let holdTimeout = null;
-        container.addEventListener('pointerdown', (e) => {
-            const btn = e.target.closest('[data-action]');
-            if (!btn) return;
-            const action = btn.dataset.action;
-            if (!action.startsWith('increment') && !action.startsWith('decrement')) return;
-
-            holdTimeout = setTimeout(() => {
-                holdInterval = setInterval(() => {
-                    btn.click();
-                }, 100);
-            }, 500);
-        });
-        const clearHold = () => {
-            clearTimeout(holdTimeout);
-            clearInterval(holdInterval);
-        };
-        container.addEventListener('pointerup', clearHold);
-        container.addEventListener('pointerleave', clearHold);
-        container.addEventListener('pointercancel', clearHold);
     }
 
     function _adjustValue(exIdx, setIdx, field, delta) {
@@ -561,13 +527,17 @@ const Workout = (() => {
         if (!ex) return;
         const lastSet = ex.sets[ex.sets.length - 1];
         ex.sets.push({
-            weight: lastSet?.weight ?? 20,
-            reps: lastSet?.reps ?? 10,
+            weight: lastSet?.weight ?? '',
+            reps: lastSet?.reps ?? '',
             completed: false,
             isDropSet: false
         });
         _save();
         _renderWorkoutUI();
+
+        // セット追加時に休憩タイマー作動
+        const profile = DataManager.getProfile();
+        UI.startRestTimer(profile.defaultRestTime);
     }
 
     function _showExerciseMenu(exIdx) {
@@ -646,7 +616,7 @@ const Workout = (() => {
         _active.exercises = _active.exercises.map(ex => ({
             ...ex,
             sets: ex.sets.filter(s => s.completed),
-            showMemo: undefined,
+            showMemo: undefined, // 保存時にフラグを消す
         })).filter(ex => ex.sets.length > 0);
 
         // 保存

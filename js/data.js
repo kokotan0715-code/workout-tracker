@@ -370,21 +370,29 @@ const DataManager = (() => {
       for (const set of ex.sets) {
         if (!set.completed || !set.weight || !set.reps) continue;
 
+        // 空文字やNaNを弾く
+        const w = parseFloat(set.weight);
+        const r = parseInt(set.reps);
+        if (isNaN(w) || isNaN(r) || w <= 0 || r <= 0) continue;
+
         // 最大重量
-        if (!pr.maxWeight || set.weight > pr.maxWeight.value) {
-          pr.maxWeight = { value: set.weight, date: dateStr };
-          updatedPRs.push({ exerciseId: ex.exerciseId, type: 'maxWeight', value: `${set.weight}kg` });
+        if (!pr.maxWeight || w > pr.maxWeight.value) {
+          // 同じ重量で回数が更新された場合もPRとするか？ ここでは純粋なMaxWeightのみ
+          const oldW = pr.maxWeight ? pr.maxWeight.value : 0;
+          pr.maxWeight = { value: w, date: dateStr };
+          updatedPRs.push({ exerciseId: ex.exerciseId, type: 'maxWeight', value: `${w}kg` });
         }
-        // 最大推定1RM（Epley式）
-        const est1RM = set.reps === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 30) * 10) / 10;
+        // 最大推定1RM（Epley式等）
+        const est1RM = r === 1 ? w : Math.round(w * (1 + r / 40) * 10) / 10;
         if (!pr.maxEstimated1RM || est1RM > pr.maxEstimated1RM.value) {
           pr.maxEstimated1RM = { value: est1RM, date: dateStr };
-          updatedPRs.push({ exerciseId: ex.exerciseId, type: 'maxEstimated1RM', value: `${est1RM}kg (推定1RM)` });
+          updatedPRs.push({ exerciseId: ex.exerciseId, type: 'maxEstimated1RM', value: `推定1RM ${est1RM}kg` });
         }
         // 最大レップ数
-        if (!pr.maxReps || set.reps > pr.maxReps.value) {
-          pr.maxReps = { value: set.reps, repsWeight: set.weight, date: dateStr };
-          updatedPRs.push({ exerciseId: ex.exerciseId, type: 'maxReps', value: `${set.reps}回 (${set.weight}kg)` });
+        if (!pr.maxReps || r > pr.maxReps.value) {
+          pr.maxReps = { value: r, repsWeight: w, date: dateStr };
+          // レップ数単独のPRは多すぎるので通知からは除外（または条件付き）
+          // 今回は一応トラッキングする
         }
       }
     }

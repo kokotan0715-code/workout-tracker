@@ -276,5 +276,27 @@ const History = (() => {
     setTimeout(() => _showWorkoutDetail(wid, y, m), 100);
   }
 
-  return { render, _detailFromModal: _detailFromModal };
+  function showDetailByDate(dateStr) {
+    const [y, m] = dateStr.split('-').map(Number);
+    const ws = DataManager.getWorkoutsByDate(dateStr);
+    if (ws.length === 1) {
+      _showWorkoutDetail(ws[0].id, y, m);
+    } else if (ws.length > 1) {
+      let listHtml = `<h2>${UI.formatDate(dateStr)}</h2>`;
+      for (const w of ws) {
+        const vol = DataManager.calcWorkoutVolume(w);
+        const cats = DataManager.getWorkoutCategories(w);
+        listHtml += `
+          <div class="card card-compact card-clickable" style="margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('modal-overlay').classList.add('hidden');History._detailFromModal('${w.id}',${y},${m})">
+            <div class="workout-chips">${cats.map(c => UI.categoryChipHTML(c)).join('')}</div>
+            <div style="font-size:0.8125rem;color:var(--color-text-secondary);margin-top:4px;">${UI.formatVolume(vol)} kg</div>
+          </div>
+        `;
+      }
+      listHtml += `<button class="btn btn-secondary btn-block" id="modal-cancel" style="margin-top:12px;">閉じる</button>`;
+      UI.showModal(listHtml);
+    }
+  }
+
+  return { render, _detailFromModal: _detailFromModal, showDetailByDate };
 })();

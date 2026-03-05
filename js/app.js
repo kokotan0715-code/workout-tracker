@@ -90,6 +90,15 @@ const App = (() => {
     function _setupEventListeners() {
         // ナビゲーションイベント
         EventBus.on('navigate', (page) => Router.navigate(page));
+        EventBus.on('navigate-date', (dateStr) => {
+            Router.navigate('history');
+            // 少し待ってからHistory側で対象日付のモーダルを開く
+            setTimeout(() => {
+                if (window.History && History.showDetailByDate) {
+                    History.showDetailByDate(dateStr);
+                }
+            }, 50);
+        });
         EventBus.on('start-workout', () => Workout.start());
         EventBus.on('resume-workout', () => Workout.resume());
         EventBus.on('storage-warning', () => {
