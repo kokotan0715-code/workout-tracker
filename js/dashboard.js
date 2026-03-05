@@ -52,23 +52,8 @@ const Dashboard = (() => {
     // --- BIG3 推定MAX ---
     html += _renderBig3Max();
 
-    // --- 週間サマリー ---
-    html += `
-      <div class="summary-grid">
-        <div class="card card-compact summary-card">
-          <div class="summary-value">${summary.trainingDays} <span style="font-size:0.875rem;font-weight:400;color:var(--color-text-secondary)">/ 7日</span></div>
-          <div class="summary-label">今週のトレーニング</div>
-        </div>
-        <div class="card card-compact summary-card">
-          <div class="summary-value">${UI.formatVolume(summary.totalVolume)}</div>
-          <div class="summary-label">週間ボリューム (kg)</div>
-        </div>
-        <div class="card card-compact summary-card">
-          <div class="summary-value">🔥 ${summary.streak}</div>
-          <div class="summary-label">連続日数</div>
-        </div>
-      </div>
-    `;
+    // 週間サマリー（今週のトレーニング日数、連続日数のカードは削除）
+    // 週間ボリュームはカレンダーの横に表示するためここでは何も表示しない
 
     // --- ワークアウト開始ボタン ---
     const emptyClass = recent.length === 0 ? 'empty-state-cta' : '';
@@ -141,15 +126,19 @@ const Dashboard = (() => {
       workoutsByDate[d].push(w);
     });
 
-    // 月のトレーニング日数を集計
-    const monthTrainingDays = Object.keys(workoutsByDate).length;
+    const summary = DataManager.getWeeklySummary();
 
     let html = `
       <div class="card" style="padding:16px;margin-bottom:20px;">
-        <div class="calendar-month-nav">
+        <div class="calendar-month-nav" style="justify-content: flex-start; gap: 8px;">
           <button class="btn btn-icon btn-ghost" id="dash-cal-prev" aria-label="前月">◀</button>
-          <h3>${_calYear}年${_calMonth}月 <span style="font-size:0.75rem;font-weight:400;color:var(--color-text-secondary);">${monthTrainingDays}日トレーニング</span></h3>
+          <h3 style="flex-grow: 1; text-align: center;">${_calYear}年${_calMonth}月</h3>
           <button class="btn btn-icon btn-ghost" id="dash-cal-next" aria-label="翌月">▶</button>
+          
+          <div style="font-size:0.8rem; color:var(--color-text-secondary); text-align:right; display:flex; flex-direction:column; justify-content:center; padding-left: 8px; border-left: 1px solid var(--color-border); white-space:nowrap;">
+            <div>週間ボリューム</div>
+            <div style="font-weight:700; color:var(--color-primary); font-size:1rem;">${UI.formatVolume(summary.totalVolume)} kg</div>
+          </div>
         </div>
         <div class="dashboard-calendar">
     `;
@@ -410,7 +399,7 @@ const Dashboard = (() => {
       cell.addEventListener('click', () => {
         const dateStr = cell.dataset.date;
         if (dateStr) {
-           EventBus.emit('navigate-date', dateStr);
+          EventBus.emit('navigate-date', dateStr);
         }
       });
     });
