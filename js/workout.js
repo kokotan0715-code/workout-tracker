@@ -34,6 +34,11 @@ const Workout = (() => {
         _renderWorkoutUI();
         _startTimer();
         EventBus.emit('navigate', 'workout');
+
+        // 自動で種目選択画面を開く
+        if (!options || !options.template) {
+            setTimeout(() => _showExercisePicker(), 50);
+        }
     }
 
     // --- 復帰 ---
@@ -145,7 +150,7 @@ const Workout = (() => {
         ${aiHtml}
         <div class="set-table">
           <div class="set-table-header">
-            <span>SET</span><span>前回</span><span>重量(kg)</span><span>回数</span><span></span>
+            <span>SET</span><span style="text-align:left;">前回</span><span style="text-align:center;">重量 / 回数</span><span></span>
           </div>
     `;
 
@@ -172,25 +177,30 @@ const Workout = (() => {
           </div>
           <div class="set-info-col" style="display:flex; flex-direction:column; justify-content:center; padding-right:4px;">
             <span class="set-previous" style="line-height:1.2;">${prevText}</span>
-            <span class="set-1rm-est" style="font-size:0.65rem; color:var(--color-gold); margin-top:2px;">
-              ${(set.weight > 0 && set.reps > 0) ? `推定: ${Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10}kg` : ''}
-            </span>
+          <div class="set-input-group" style="justify-content:center; flex-direction:row; align-items:center; gap:8px;">
+            <div style="position:relative; display:inline-block; width:45%;">
+              <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.weight ?? ''}"
+                data-field="weight" data-ex="${exIndex}" data-set="${s}"
+                data-min="0" data-max="999" data-decimal="true" readonly
+                style="padding-right:24px; text-align:right;">
+              <span style="position:absolute; right:8px; top:50%; transform:translateY(-50%); color:var(--color-text-hint); font-size:0.8rem; pointer-events:none;">kg</span>
+            </div>
+            <div style="position:relative; display:inline-block; width:45%;">
+              <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.reps ?? ''}"
+                data-field="reps" data-ex="${exIndex}" data-set="${s}"
+                data-min="1" data-max="100" data-decimal="false" readonly
+                style="padding-right:24px; text-align:right;">
+              <span style="position:absolute; right:8px; top:50%; transform:translateY(-50%); color:var(--color-text-hint); font-size:0.8rem; pointer-events:none;">回</span>
+            </div>
           </div>
-          <div class="set-input-group" style="justify-content:center;">
-            <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.weight ?? ''}"
-              data-field="weight" data-ex="${exIndex}" data-set="${s}"
-              data-min="0" data-max="999" data-decimal="true" placeholder="kg" readonly
-              ${set.completed ? 'disabled' : ''}>
+          <div style="display:flex; flex-direction:column; align-items:center;">
+             <button class="btn btn-ghost btn-icon btn-sm"
+              data-action="start-timer" data-ex="${exIndex}" data-set="${s}"
+              aria-label="タイマー起動" style="color:var(--color-primary); font-size:1.2rem; padding:0; height:36px; width:36px;">🕒</button>
+             <span class="set-1rm-est" style="font-size:0.6rem; color:var(--color-gold); margin-top:2px;">
+                 ${(set.weight > 0 && set.reps > 0) ? `RM: ${Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10}kg` : ''}
+             </span>
           </div>
-          <div class="set-input-group" style="justify-content:center;">
-            <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.reps ?? ''}"
-              data-field="reps" data-ex="${exIndex}" data-set="${s}"
-              data-min="1" data-max="100" data-decimal="false" placeholder="回" readonly
-              ${set.completed ? 'disabled' : ''}>
-          </div>
-          <button class="set-check-btn${set.completed ? ' checked' : ''}"
-            data-action="toggle-set" data-ex="${exIndex}" data-set="${s}"
-            aria-label="セット完了">${set.completed ? '✓' : '○'}</button>
         </div>
       `;
         }
@@ -366,7 +376,7 @@ const Workout = (() => {
                 case 'decrement-weight': _adjustValue(exIdx, setIdx, 'weight', -profile.weightStep); break;
                 case 'increment-reps': _adjustValue(exIdx, setIdx, 'reps', 1); break;
                 case 'decrement-reps': _adjustValue(exIdx, setIdx, 'reps', -1); break;
-                case 'toggle-set': _toggleSet(exIdx, setIdx); break;
+                case 'start-timer': _startRestTimerForSet(exIdx, setIdx); break;
                 case 'add-set': _addSet(exIdx); break;
                 case 'toggle-drop': _toggleDropSet(exIdx, setIdx); break;
                 case 'delete-set': _deleteSet(exIdx, setIdx); break;
@@ -388,18 +398,31 @@ const Workout = (() => {
                 const newVal = await UI.showNumpad(initialVal, title, { min, max, allowDecimal: decimal });
 
                 if (newVal !== null) {
-                    _active.exercises[exIdx].sets[setIdx][field] = Number(newVal);
+                    const set = _active.exercises[exIdx].sets[setIdx];
+                    set[field] = Number(newVal);
+
+                    // 両方入力されていれば自動完了
+                    if (set.weight > 0 && set.reps > 0) {
+                        set.completed = true;
+                    } else {
+                        set.completed = false;
+                    }
+
                     _save();
 
                     // Numpadからの反映も部分更新で行う
                     e.target.value = newVal;
                     const rowEl = e.target.closest('.set-row');
                     if (rowEl) {
+                        if (set.completed) {
+                            rowEl.classList.add('completed');
+                        } else {
+                            rowEl.classList.remove('completed');
+                        }
                         const rmEstEl = rowEl.querySelector('.set-1rm-est');
-                        const set = _active.exercises[exIdx].sets[setIdx];
                         if (rmEstEl && set.weight > 0 && set.reps > 0) {
                             const est1RM = Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10;
-                            rmEstEl.textContent = `推定: ${est1RM}kg`;
+                            rmEstEl.textContent = `RM: ${est1RM}kg`;
                         } else if (rmEstEl) {
                             rmEstEl.textContent = '';
                         }
@@ -463,6 +486,14 @@ const Workout = (() => {
         if (field === 'weight') val = Math.max(0, Math.min(500, val));
         if (field === 'reps') val = Math.max(1, Math.min(100, Math.round(val)));
         set[field] = val;
+
+        // 両方入力されていれば自動完了
+        if (set.weight > 0 && set.reps > 0) {
+            set.completed = true;
+        } else {
+            set.completed = false;
+        }
+
         _save();
 
         // --- DOM即時反映（フル再描画を回避） ---
@@ -471,51 +502,26 @@ const Workout = (() => {
 
         const rowEl = document.querySelector(`.set-row[data-ex-index="${exIdx}"][data-set-index="${setIdx}"]`);
         if (rowEl) {
+            if (set.completed) {
+                rowEl.classList.add('completed');
+            } else {
+                rowEl.classList.remove('completed');
+            }
             const rmEstEl = rowEl.querySelector('.set-1rm-est');
             if (rmEstEl && set.weight > 0 && set.reps > 0) {
                 const est1RM = Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10;
-                rmEstEl.textContent = `推定: ${est1RM}kg`;
+                rmEstEl.textContent = `RM: ${est1RM}kg`;
             } else if (rmEstEl) {
                 rmEstEl.textContent = '';
             }
         }
     }
 
-    function _toggleSet(exIdx, setIdx) {
-        const set = _active.exercises[exIdx]?.sets[setIdx];
-        if (!set) return;
-
-        if (set.completed) {
-            // 完了解除
-            set.completed = false;
-            _save();
-            _renderWorkoutUI();
-            return;
-        }
-
-        // 入力チェック
-        const weight = parseFloat(document.querySelector(`input[data-field="weight"][data-ex="${exIdx}"][data-set="${setIdx}"]`)?.value);
-        const reps = parseInt(document.querySelector(`input[data-field="reps"][data-ex="${exIdx}"][data-set="${setIdx}"]`)?.value);
-
-        if (isNaN(weight) || isNaN(reps) || reps < 1) {
-            UI.showToast('重量と回数を入力してください', 'error');
-            return;
-        }
-
-        set.weight = Math.max(0, Math.min(500, weight));
-        set.reps = Math.max(1, Math.min(100, reps));
-        set.completed = true;
-        _save();
-
-        // パルスアニメーション
-        const row = document.querySelector(`.set-row[data-ex-index="${exIdx}"][data-set-index="${setIdx}"]`);
-        if (row) { row.classList.add('anim-pulse'); }
-
-        // 休憩タイマー起動
+    function _startRestTimerForSet(exIdx, setIdx) {
+        // 右側の時計ボタンを押したときの挙動
         const profile = DataManager.getProfile();
         UI.startRestTimer(profile.defaultRestTime);
-
-        _renderWorkoutUI();
+        UI.showToast('休憩タイマーを開始しました', 'info', 2000);
     }
 
     function _toggleDropSet(exIdx, setIdx) {
