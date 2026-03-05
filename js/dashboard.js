@@ -18,13 +18,9 @@ const Dashboard = (() => {
 
     let html = '';
 
-    // --- 挨拶ヘッダー（日付のみ残す） ---
-    const today = new Date();
-    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-    const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日（${dayNames[today.getDay()]}）`;
+    // --- 挨拶ヘッダー（日付表示を削除） ---
     html += `
       <div class="greeting-header">
-        <div class="date-text" style="font-size:1.2rem; font-weight:700; color:var(--color-primary);">${dateStr}</div>
       </div>
     `;
 
@@ -134,28 +130,44 @@ const Dashboard = (() => {
           <button class="btn btn-icon btn-ghost" id="dash-cal-prev" aria-label="前月">◀</button>
           <h3 style="flex-grow: 1; text-align: center;">${_calYear}年${_calMonth}月</h3>
           <button class="btn btn-icon btn-ghost" id="dash-cal-next" aria-label="翌月">▶</button>
-          
-          <div style="font-size:0.8rem; color:var(--color-text-secondary); text-align:right; display:flex; flex-direction:column; justify-content:center; padding-left: 8px; border-left: 1px solid var(--color-border); white-space:nowrap;">
-            <div>週間ボリューム</div>
-            <div style="font-weight:700; color:var(--color-primary); font-size:1rem;">${UI.formatVolume(summary.totalVolume)} kg</div>
-          </div>
         </div>
-        <div class="dashboard-calendar">
+        <div class="dashboard-calendar" style="grid-template-columns: repeat(7, 1fr) 2fr;">
     `;
 
-    // 曜日ヘッダー
+    // 曜日・週間ボリュームヘッダー
     dayHeaders.forEach((d, i) => {
       const isSat = i === 5, isSun = i === 6;
       const color = isSun ? 'var(--color-danger)' : isSat ? 'var(--color-primary)' : 'var(--color-text-hint)';
       html += `<div class="calendar-header-cell" style="color:${color}">${d}</div>`;
     });
+    html += `<div class="calendar-header-cell" style="color:var(--color-text-secondary); font-size:0.6rem;">週間Vol</div>`;
+
+    // セル生成と週ごとのボリューム計算
+    let currentWeekVolume = 0;
+    let cellCount = 0;
+
+    const addCell = (cellHtml, dateStrForVolume = null) => {
+      html += cellHtml;
+      if (dateStrForVolume && workoutsByDate[dateStrForVolume]) {
+        workoutsByDate[dateStrForVolume].forEach(w => {
+          currentWeekVolume += DataManager.calcWorkoutVolume(w);
+        });
+      }
+      cellCount++;
+
+      // 日曜日（週の終わり）に到達したらボリューム列を追加
+      if (cellCount % 7 === 0) {
+        html += `<div class="dashboard-cal-cell" style="display:flex; align-items:center; justify-content:center; font-size:0.75rem; color:var(--color-text-secondary); font-variant-numeric: tabular-nums;">${UI.formatVolume(currentWeekVolume)}kg</div>`;
+        currentWeekVolume = 0; // 次の週のためにリセット
+      }
+    };
 
     // 前月の空セル
     const prevMonth = new Date(_calYear, _calMonth - 2, 1);
     const prevLastDay = new Date(_calYear, _calMonth - 1, 0).getDate();
     for (let i = 0; i < startDayOfWeek; i++) {
       const day = prevLastDay - startDayOfWeek + 1 + i;
-      html += `<div class="dashboard-cal-cell other-month"><span class="cal-day-num">${day}</span></div>`;
+      addCell(`<div class="dashboard-cal-cell other-month"><span class="cal-day-num">${day}</span></div>`);
     }
 
     // 当月のセル
@@ -167,19 +179,19 @@ const Dashboard = (() => {
       dayWorkouts.forEach(w => DataManager.getWorkoutCategories(w).forEach(c => cats.add(c)));
       const hasWorkout = dayWorkouts.length > 0;
 
-      html += `
+      addCell(`
           <div class="dashboard-cal-cell${isToday ? ' today' : ''}${hasWorkout ? ' has-workout' : ''}" data-date="${dateStr}">
             <span class="cal-day-num">${d}</span>
             ${hasWorkout ? `<div class="cal-dots">${[...cats].slice(0, 3).map(c => `<div class="cal-dot" style="background:${DataManager.CATEGORY_COLORS[c] || 'var(--color-other)'}">${DataManager.CATEGORY_NAMES[c] ? DataManager.CATEGORY_NAMES[c][0] : ''}</div>`).join('')}</div>` : ''}
           </div>
-        `;
+        `, dateStr);
     }
 
-    // 翌月の空セル（6行×7列=42セルになるよう埋める）
+    // 翌月の空セル
     const totalCells = startDayOfWeek + lastDay.getDate();
     const remaining = (7 - (totalCells % 7)) % 7;
     for (let i = 1; i <= remaining; i++) {
-      html += `<div class="dashboard-cal-cell other-month"><span class="cal-day-num">${i}</span></div>`;
+      addCell(`<div class="dashboard-cal-cell other-month"><span class="cal-day-num">${i}</span></div>`);
     }
 
     html += `
