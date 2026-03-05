@@ -205,7 +205,7 @@ const DataManager = (() => {
 
   function deleteWorkout(workoutId, year, month) {
     const key = _workoutKey(year, month);
-    const workouts = (_get(key) || []).filter(w => w.id !== workoutId);
+    const workouts = (_get(key) || []).filter(w => String(w.id) !== String(workoutId));
     _set(key, workouts);
   }
 
@@ -484,8 +484,8 @@ const DataManager = (() => {
       trainingDays: trainingDays.size,
       totalVolume,
       streak,
-      weekStart: monday,
-      weekEnd: sunday,
+      weekStart: sunday,
+      weekEnd: saturday,
     };
   }
 

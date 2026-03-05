@@ -192,22 +192,15 @@ const History = (() => {
 
     setTimeout(() => {
       document.getElementById('modal-delete-workout')?.addEventListener('click', async () => {
-        UI.closeModal(false); // 最初のモーダルを閉じる
-        await new Promise(r => setTimeout(r, 350)); // モーダルが閉じてアニメーション完了するのを待つ
-
-        const confirmResult = await UI.showModal(`
-          <h2>ワークアウトを削除</h2>
-          <p>この記録を完全に削除しますか？元に戻せません。</p>
-          <div class="modal-actions">
-            <button class="btn btn-secondary" id="modal-cancel">キャンセル</button>
-            <button class="btn btn-danger" id="modal-confirm">削除する</button>
-          </div>
-        `);
-        if (confirmResult) {
-          DataManager.deleteWorkout(workoutId, parseInt(year), parseInt(month));
-          render();
-          UI.showToast('ワークアウトを削除しました', 'info');
-        }
+        UI.closeModal(false);
+        setTimeout(async () => {
+          const confirmResult = await UI.confirm('ワークアウトを削除', 'この記録を完全に削除しますか？元に戻せません。', '削除する', 'キャンセル', true);
+          if (confirmResult) {
+            DataManager.deleteWorkout(workoutId, parseInt(year), parseInt(month));
+            render();
+            UI.showToast('ワークアウトを削除しました', 'info');
+          }
+        }, 350);
       });
 
       // Xへのシェアボタン

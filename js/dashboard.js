@@ -150,6 +150,7 @@ const Dashboard = (() => {
 
     const addCell = (cellHtml, dateStrForVolume = null) => {
       html += cellHtml;
+
       if (dateStrForVolume && workoutsByDate[dateStrForVolume]) {
         workoutsByDate[dateStrForVolume].forEach(w => {
           currentWeekVolume += DataManager.calcWorkoutVolume(w);
