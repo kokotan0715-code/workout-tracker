@@ -526,7 +526,13 @@ const DataManager = (() => {
       const key = localStorage.key(i);
       if (key && key.startsWith('wt_')) keysToRemove.push(key);
     }
-    keysToRemove.forEach(k => localStorage.removeItem(k));
+    keysToRemove.forEach(k => {
+      try {
+        localStorage.removeItem(k);
+      } catch (e) {
+        console.error("Failed to remove key:", k, e);
+      }
+    });
   }
 
   return {

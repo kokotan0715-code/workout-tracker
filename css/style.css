@@ -225,7 +225,7 @@ body {
   -webkit-backdrop-filter: var(--blur-glass);
   border-radius: var(--radius-lg);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 20px;
+  padding: 12px;
   transition: all var(--transition-fast);
 }
 
@@ -676,7 +676,8 @@ body {
 
 /* --- ダッシュボード --- */
 .greeting-header {
-  margin-bottom: 24px;
+  margin-bottom: 8px;
+  /* Reduce from 24px */
 }
 
 .greeting-header h1 {
@@ -733,22 +734,24 @@ body {
 /* ダッシュボード月間カレンダー */
 .dashboard-calendar {
   display: grid;
-  grid-template-columns: repeat(7, 1fr) 1.5fr; /* 曜日7日 + 週間Vol */
-  gap: 1px; /* 隙間をさらに小さく */
+  grid-template-columns: repeat(7, 1fr) 1.5fr;
+  /* 曜日7日 + 週間Vol */
+  gap: 1px;
+  /* 隙間をさらに小さく */
 }
 
 .dashboard-calendar .calendar-header-cell {
   text-align: center;
-  font-size: 0.6875rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  padding: 4px 0 8px;
+  padding: 2px 0 4px;
 }
 
 .dashboard-cal-cell {
   text-align: center;
-  padding: 4px 1px 2px;
+  padding: 2px 1px;
   border-radius: var(--radius-sm);
-  min-height: 36px;
+  min-height: 28px;
   position: relative;
   transition: background var(--transition-fast);
 }
@@ -829,13 +832,13 @@ body {
 
 .start-workout-btn {
   width: 100%;
-  height: 56px;
+  height: 48px;
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, var(--color-primary), #0099cc);
   color: #000;
-  font-size: 1.0625rem;
+  font-size: 1rem;
   font-weight: 700;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
 }
 
 .empty-state-cta .start-workout-btn {
@@ -843,9 +846,9 @@ body {
 }
 
 .section-title {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .recent-workout-card {

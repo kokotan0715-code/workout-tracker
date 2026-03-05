@@ -165,7 +165,10 @@ const Workout = (() => {
         <div class="${rowClass}" data-ex-index="${exIndex}" data-set-index="${s}">
           <div class="set-number-col">
             <span class="set-number">${s + 1}</span>
-            <button class="btn-ghost btn-sm btn-icon drop-toggle-btn${set.isDropSet ? ' active' : ''}" data-action="toggle-drop" data-ex="${exIndex}" data-set="${s}" title="ドロップセット切替">📉</button>
+            <div style="display:flex; gap:2px; margin-top:2px;">
+              <button class="btn-ghost btn-sm btn-icon drop-toggle-btn${set.isDropSet ? ' active' : ''}" data-action="toggle-drop" data-ex="${exIndex}" data-set="${s}" title="ドロップセット切替" style="width:20px;height:20px;font-size:0.6rem;">📉</button>
+              <button class="btn-ghost btn-sm btn-icon" data-action="delete-set" data-ex="${exIndex}" data-set="${s}" title="セット削除" style="width:20px;height:20px;font-size:0.6rem;color:var(--color-danger);opacity:0.7;">✖</button>
+            </div>
           </div>
           <div class="set-info-col" style="display:flex; flex-direction:column; justify-content:center; padding-right:4px;">
             <span class="set-previous" style="line-height:1.2;">${prevText}</span>
@@ -176,7 +179,7 @@ const Workout = (() => {
           <div class="set-input-group" style="justify-content:center;">
             <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.weight ?? ''}"
               data-field="weight" data-ex="${exIndex}" data-set="${s}"
-              data-min="0" data-max="500" data-decimal="true" placeholder="kg" readonly
+              data-min="0" data-max="999" data-decimal="true" placeholder="kg" readonly
               ${set.completed ? 'disabled' : ''}>
           </div>
           <div class="set-input-group" style="justify-content:center;">
@@ -366,6 +369,7 @@ const Workout = (() => {
                 case 'toggle-set': _toggleSet(exIdx, setIdx); break;
                 case 'add-set': _addSet(exIdx); break;
                 case 'toggle-drop': _toggleDropSet(exIdx, setIdx); break;
+                case 'delete-set': _deleteSet(exIdx, setIdx); break;
             }
         });
 
@@ -520,6 +524,21 @@ const Workout = (() => {
         set.isDropSet = !set.isDropSet;
         _save();
         _renderWorkoutUI();
+    }
+
+    function _deleteSet(exIdx, setIdx) {
+        const ex = _active.exercises[exIdx];
+        if (!ex || ex.sets.length <= 1) {
+            UI.showToast('最後の1セットは削除できません。不要な場合は種目ごと削除してください。', 'error', 4000);
+            return;
+        }
+        UI.confirm('セット削除', 'このセットを削除しますか？', '削除', 'キャンセル', true).then(res => {
+            if (res) {
+                ex.sets.splice(setIdx, 1);
+                _save();
+                _renderWorkoutUI();
+            }
+        });
     }
 
     function _addSet(exIdx) {

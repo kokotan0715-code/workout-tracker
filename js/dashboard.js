@@ -28,10 +28,10 @@ const Dashboard = (() => {
     if (active) {
       const elapsed = Date.now() - active.startTime;
       html += `
-        <div class="resume-banner" id="resume-banner">
+        <div class="resume-banner" id="resume-banner" style="margin-bottom: 12px; padding: 12px; min-height: 48px;">
           <div class="resume-info">
-            <h3>⚡ 進行中のワークアウトがあります</h3>
-            <p>経過時間: ${UI.formatTimer(elapsed)}</p>
+            <h3 style="font-size: 0.9rem;">⚡ 進行中のワークアウトがあります</h3>
+            <p style="font-size: 0.75rem;">経過時間: ${UI.formatTimer(elapsed)}</p>
           </div>
           <button class="btn btn-primary btn-sm btn-resume" id="resume-workout-btn">再開する</button>
           <button class="btn-dismiss" id="dismiss-workout-btn" aria-label="破棄">×</button>
@@ -55,19 +55,19 @@ const Dashboard = (() => {
     const emptyClass = recent.length === 0 ? 'empty-state-cta' : '';
     html += `
       <div class="${emptyClass}">
-        <button class="btn start-workout-btn" id="start-workout-btn" style="margin-bottom:16px;">🏋️ ワークアウト開始 🏋️</button>
+        <button class="btn start-workout-btn" id="start-workout-btn" style="margin-bottom:8px;">🏋️ ワークアウト開始 🏋️</button>
       </div>
     `;
 
     // --- ルーティン（テンプレート）から開始 ---
     if (templates.length > 0) {
       html += `<h2 class="section-title">ルーティンから開始</h2>
-               <div class="template-list" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:16px;margin-bottom:16px;">`;
+               <div class="template-list" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;">`;
       for (const t of templates) {
         html += `
-          <div class="card card-compact card-clickable start-template-btn" data-id="${t.id}" style="min-width:140px;flex:0 0 auto;border:1px solid var(--color-border);">
-            <div style="font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
-            <div style="font-size:0.75rem;color:var(--color-text-secondary);">${t.exercises.length}種目</div>
+          <div class="card card-compact card-clickable start-template-btn" data-id="${t.id}" style="min-width:120px;flex:0 0 auto;border:1px solid var(--color-border); padding: 8px;">
+            <div style="font-size:0.85rem;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
+            <div style="font-size:0.7rem;color:var(--color-text-secondary);">${t.exercises.length}種目</div>
           </div>
         `;
       }
@@ -78,7 +78,8 @@ const Dashboard = (() => {
 
     // --- 最近のワークアウト ---
     if (recent.length > 0) {
-      html += `<h2 class="section-title">最近のワークアウト</h2>`;
+      html += `<h2 class="section-title">最近のワークアウト</h2>
+               <div style="max-height: 220px; overflow-y: auto; padding-right: 4px; padding-bottom: 24px;">`;
       for (const w of recent) {
         const cats = DataManager.getWorkoutCategories(w);
         const vol = DataManager.calcWorkoutVolume(w);
@@ -99,6 +100,7 @@ const Dashboard = (() => {
           </div>
         `;
       }
+      html += `</div>`;
     }
 
     container.innerHTML = html;
@@ -125,11 +127,11 @@ const Dashboard = (() => {
     const summary = DataManager.getWeeklySummary();
 
     let html = `
-      <div class="card" style="padding:16px;margin-bottom:20px;">
-        <div class="calendar-month-nav" style="justify-content: flex-start; gap: 8px;">
-          <button class="btn btn-icon btn-ghost" id="dash-cal-prev" aria-label="前月">◀</button>
-          <h3 style="flex-grow: 1; text-align: center;">${_calYear}年${_calMonth}月</h3>
-          <button class="btn btn-icon btn-ghost" id="dash-cal-next" aria-label="翌月">▶</button>
+      <div class="card" style="padding:8px 12px; margin-bottom:12px;">
+        <div class="calendar-month-nav" style="justify-content: flex-start; gap: 8px; margin-bottom:4px;">
+          <button class="btn btn-icon btn-ghost" id="dash-cal-prev" aria-label="前月" style="height:28px; width:28px; min-height:28px;">◀</button>
+          <h3 style="flex-grow: 1; text-align: center; font-size:1rem; margin:0;">${_calYear}年${_calMonth}月</h3>
+          <button class="btn btn-icon btn-ghost" id="dash-cal-next" aria-label="翌月" style="height:28px; width:28px; min-height:28px;">▶</button>
         </div>
         <div class="dashboard-calendar" style="grid-template-columns: repeat(7, 1fr) 2fr;">
     `;
@@ -236,11 +238,11 @@ const Dashboard = (() => {
     };
 
     let html = `
-      <div class="card" style="padding:16px; margin-bottom:20px;">
-        <h3 style="font-size:0.95rem; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+      <div class="card" style="padding:12px; margin-bottom:12px;">
+        <h3 style="font-size:0.85rem; margin-bottom:8px; display:flex; align-items:center; gap:4px;">
           📊 部位別 最終トレーニングからの経過日数
         </h3>
-        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">
     `;
 
     for (const cat of categoryKeys) {
@@ -261,12 +263,12 @@ const Dashboard = (() => {
       }
 
       html += `
-        <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:10px 8px; text-align:center;">
-          <div style="font-size:0.7rem; color:var(--color-text-secondary); margin-bottom:4px; display:flex; align-items:center; justify-content:center; gap:4px;">
-            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${color};"></span>
+        <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:6px 4px; text-align:center;">
+          <div style="font-size:0.65rem; color:var(--color-text-secondary); margin-bottom:2px; display:flex; align-items:center; justify-content:center; gap:4px;">
+            <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${color};"></span>
             ${name}
           </div>
-          <div style="font-size:1rem; font-weight:700; color:${daysColor};">${daysText}</div>
+          <div style="font-size:0.9rem; font-weight:700; color:${daysColor};">${daysText}</div>
         </div>
       `;
     }
@@ -312,19 +314,19 @@ const Dashboard = (() => {
     const total = Math.round((big3[0].max + big3[1].max + big3[2].max) * 10) / 10;
 
     let html = `
-      <div class="card" style="padding:16px; margin-bottom:20px; border:1px solid rgba(255,215,0,0.3); background:linear-gradient(135deg, rgba(255,215,0,0.05), rgba(255,165,0,0.05));">
-        <h3 style="font-size:0.95rem; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+      <div class="card" style="padding:12px; margin-bottom:12px; border:1px solid rgba(255,215,0,0.3); background:linear-gradient(135deg, rgba(255,215,0,0.05), rgba(255,165,0,0.05));">
+        <h3 style="font-size:0.85rem; margin-bottom:8px; display:flex; align-items:center; gap:4px;">
           👑 BIG3 推定MAX
         </h3>
-        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:12px;">
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-bottom:8px;">
     `;
 
     for (const b of big3) {
       html += `
-        <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:10px 8px; text-align:center;">
-          <div style="font-size:0.65rem; color:var(--color-text-secondary); margin-bottom:2px;">${b.emoji} ${b.name}</div>
-          <div style="font-size:1.2rem; font-weight:800; color:${b.max > 0 ? 'var(--color-gold)' : 'var(--color-text-hint)'};">
-            ${b.max > 0 ? b.max + '<span style="font-size:0.7rem;font-weight:400;">kg</span>' : '---'}
+        <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-sm); padding:6px 4px; text-align:center;">
+          <div style="font-size:0.6rem; color:var(--color-text-secondary); margin-bottom:2px;">${b.emoji} ${b.name}</div>
+          <div style="font-size:1rem; font-weight:800; color:${b.max > 0 ? 'var(--color-gold)' : 'var(--color-text-hint)'};">
+            ${b.max > 0 ? b.max + '<span style="font-size:0.65rem;font-weight:400;">kg</span>' : '---'}
           </div>
         </div>
       `;
@@ -332,10 +334,10 @@ const Dashboard = (() => {
 
     html += `
         </div>
-        <div style="background:linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.15)); border:1px solid rgba(255,215,0,0.3); border-radius:var(--radius-md); padding:12px; text-align:center;">
-          <div style="font-size:0.75rem; color:var(--color-text-secondary); margin-bottom:2px;">🏆 BIG3 合計</div>
-          <div style="font-size:1.6rem; font-weight:900; color:var(--color-gold);">
-            ${total > 0 ? total + '<span style="font-size:0.85rem;font-weight:400;"> kg</span>' : '--- kg'}
+        <div style="background:linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,165,0,0.15)); border:1px solid rgba(255,215,0,0.3); border-radius:var(--radius-sm); padding:8px; text-align:center;">
+          <div style="font-size:0.7rem; color:var(--color-text-secondary); margin-bottom:2px;">🏆 BIG3 合計</div>
+          <div style="font-size:1.3rem; font-weight:900; color:var(--color-gold);">
+            ${total > 0 ? total + '<span style="font-size:0.75rem;font-weight:400;"> kg</span>' : '--- kg'}
           </div>
         </div>
       </div>

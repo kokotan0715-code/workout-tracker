@@ -276,20 +276,11 @@ const Settings = (() => {
     document.getElementById('btn-add-template')?.addEventListener('click', async () => {
       const result = await UI.showModal(`
             <h2>テンプレート作成</h2>
-            <p>※現状は「胸トレテスト」がダミーとして追加されます。完全な種目選択UIは機能拡張時に追加。</p>
+            <p>※今後のアップデートで、オリジナルルーティンを自由に作成・保存できる完全なUIが実装されます💪 少しお待ちください。</p>
             <div class="modal-actions">
-              <button class="btn btn-secondary" id="modal-cancel">キャンセル</button>
-              <button class="btn btn-primary" id="modal-confirm">追加</button>
+              <button class="btn btn-primary" id="modal-confirm">閉じる</button>
             </div>
           `);
-      if (result) {
-        DataManager.saveTemplate({
-          name: '胸トレ 基本ルーティン',
-          exercises: ['chest_001', 'chest_002', 'chest_003']
-        });
-        render();
-        UI.showToast('テンプレートを追加しました', 'success');
-      }
     });
 
     // テンプレート削除
