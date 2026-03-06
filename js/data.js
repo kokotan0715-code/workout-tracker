@@ -185,7 +185,11 @@ const DataManager = (() => {
 
   // --- ワークアウト ---
   function getWorkouts(year, month) {
-    return _get(_workoutKey(year, month)) || [];
+    const workouts = _get(_workoutKey(year, month)) || [];
+    workouts.forEach(w => {
+      if (!w.exercises) w.exercises = [];
+    });
+    return workouts;
   }
 
   function saveWorkout(workout) {
@@ -330,12 +334,22 @@ const DataManager = (() => {
   }
 
   // --- アクティブワークアウト（進行中） ---
-  function getActiveWorkout() { return _get(KEYS.ACTIVE_WORKOUT); }
+  function getActiveWorkout() {
+    const w = _get(KEYS.ACTIVE_WORKOUT);
+    if (w && !w.exercises) w.exercises = [];
+    return w;
+  }
   function saveActiveWorkout(data) { _set(KEYS.ACTIVE_WORKOUT, data); }
   function clearActiveWorkout() { _remove(KEYS.ACTIVE_WORKOUT); }
 
   // --- テンプレート設定 ---
-  function getTemplates() { return _get(KEYS.TEMPLATES) || []; }
+  function getTemplates() {
+    const tpls = _get(KEYS.TEMPLATES) || [];
+    tpls.forEach(t => {
+      if (!t.exercises) t.exercises = [];
+    });
+    return tpls;
+  }
   function saveTemplates(templates) { _set(KEYS.TEMPLATES, templates); }
   function saveTemplate(template) {
     const templates = getTemplates();

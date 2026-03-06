@@ -176,28 +176,28 @@ const Workout = (() => {
           </div>
           <div class="set-input-group" style="justify-content:center; flex-direction:row; align-items:center; gap:4px;">
             <div style="position:relative; display:inline-block; width:50%;">
-              <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.weight ?? ''}"
+              <input type="number" step="0.5" class="input-field input-number" value="${set.weight ?? ''}"
                 data-field="weight" data-ex="${exIndex}" data-set="${s}"
-                data-min="0" data-max="999" data-decimal="true" readonly
+                data-min="0" data-max="999" data-decimal="true"
                 style="padding-right:20px; text-align:right;">
               <span style="position:absolute; right:4px; top:50%; transform:translateY(-50%); color:var(--color-text-hint); font-size:0.75rem; pointer-events:none;">kg</span>
             </div>
             <span style="color:var(--color-text-hint); font-size:0.75rem;">✖️</span>
             <div style="position:relative; display:inline-block; width:40%;">
-              <input type="text" inputmode="none" class="input-field input-number numpad-trigger" value="${set.reps ?? ''}"
+              <input type="number" step="1" class="input-field input-number" value="${set.reps ?? ''}"
                 data-field="reps" data-ex="${exIndex}" data-set="${s}"
-                data-min="1" data-max="100" data-decimal="false" readonly
+                data-min="1" data-max="100" data-decimal="false"
                 style="padding-right:20px; text-align:right;">
               <span style="position:absolute; right:4px; top:50%; transform:translateY(-50%); color:var(--color-text-hint); font-size:0.75rem; pointer-events:none;">回</span>
             </div>
           </div>
-          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+          <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap: 4px;">
+             <span class="set-1rm-est" style="font-size:0.55rem; color:var(--color-gold); min-width:30px; text-align:center;">
+                 ${(set.weight > 0 && set.reps > 0) ? `RM: ${Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10}kg` : ''}
+             </span>
              <button class="btn btn-ghost btn-icon btn-sm"
               data-action="start-timer" data-ex="${exIndex}" data-set="${s}"
               aria-label="タイマー起動" style="color:var(--color-primary); font-size:1.1rem; padding:0; height:28px; width:28px;">🕒</button>
-             <span class="set-1rm-est" style="font-size:0.55rem; color:var(--color-gold); margin-top:2px;">
-                 ${(set.weight > 0 && set.reps > 0) ? `RM: ${Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10}kg` : ''}
-             </span>
           </div>
           <div style="display:flex; justify-content:center; align-items:center;">
              <button class="btn-ghost btn-sm btn-icon" data-action="delete-set" data-ex="${exIndex}" data-set="${s}" title="セット削除" style="width:24px;height:24px;font-size:0.8rem;color:var(--color-danger);opacity:0.7;">❌</button>
@@ -356,14 +356,20 @@ const Workout = (() => {
         _renderWorkoutUI();
     }
 
-    // --- イベントバインド ---
+    // --- イベントバインド（一度だけ実行する） ---
+    let _isEventsBound = false;
     function _bindWorkoutEvents() {
+        if (_isEventsBound) return;
+        _isEventsBound = true;
+
         const container = document.getElementById('workout-content');
 
         // 完了ボタン
-        document.getElementById('workout-finish-btn')?.addEventListener('click', () => _finishWorkout());
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'workout-finish-btn') _finishWorkout();
+        });
 
-        // 委任イベント
+        // 委任イベント (click)
         container.addEventListener('click', (e) => {
             const btn = e.target.closest('[data-action]');
             if (!btn) return;
@@ -384,67 +390,54 @@ const Workout = (() => {
             }
         });
 
-        // --- Numpad 呼び出し ---
-        document.body.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('numpad-trigger') && !e.target.disabled) {
+        // 委任イベント (input) - テンキーの代わり（スマホ・PC標準キーボード入力）とメモ
+        container.addEventListener('input', (e) => {
+            const field = e.target.dataset.field;
+            if (field === 'memo') {
+                const exIdx = parseInt(e.target.dataset.ex);
+                _active.exercises[exIdx].memo = e.target.value;
+                _save();
+            } else if (field === 'weight' || field === 'reps') {
                 const exIdx = parseInt(e.target.dataset.ex);
                 const setIdx = parseInt(e.target.dataset.set);
-                const field = e.target.dataset.field; // 'weight' or 'reps'
-                const min = parseFloat(e.target.dataset.min) || 0;
-                const max = parseFloat(e.target.dataset.max) || 999;
-                const decimal = e.target.dataset.decimal === 'true';
-                const initialVal = e.target.value;
-                const title = field === 'weight' ? '重量 (kg)' : '回数 (回)';
+                const set = _active.exercises[exIdx].sets[setIdx];
+                let newVal = parseFloat(e.target.value);
 
-                const newVal = await UI.showNumpad(initialVal, title, { min, max, allowDecimal: decimal });
+                if (isNaN(newVal)) {
+                    set[field] = '';
+                } else {
+                    set[field] = newVal;
+                }
 
-                if (newVal !== null) {
-                    const set = _active.exercises[exIdx].sets[setIdx];
-                    set[field] = Number(newVal);
+                // 両方入力されていれば自動完了
+                if (set.weight > 0 && set.reps > 0) {
+                    set.completed = true;
+                } else {
+                    set.completed = false;
+                }
 
-                    // 両方入力されていれば自動完了
-                    if (set.weight > 0 && set.reps > 0) {
-                        set.completed = true;
+                _save();
+
+                // 部分更新
+                const rowEl = e.target.closest('.set-row');
+                if (rowEl) {
+                    if (set.completed) {
+                        rowEl.classList.add('completed');
                     } else {
-                        set.completed = false;
+                        rowEl.classList.remove('completed');
                     }
-
-                    _save();
-
-                    // Numpadからの反映も部分更新で行う
-                    e.target.value = newVal;
-                    const rowEl = e.target.closest('.set-row');
-                    if (rowEl) {
-                        if (set.completed) {
-                            rowEl.classList.add('completed');
-                        } else {
-                            rowEl.classList.remove('completed');
-                        }
-                        const rmEstEl = rowEl.querySelector('.set-1rm-est');
-                        if (rmEstEl && set.weight > 0 && set.reps > 0) {
-                            const est1RM = Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10;
-                            rmEstEl.textContent = `RM: ${est1RM}kg`;
-                        } else if (rmEstEl) {
-                            rmEstEl.textContent = '';
-                        }
+                    const rmEstEl = rowEl.querySelector('.set-1rm-est');
+                    if (rmEstEl && set.weight > 0 && set.reps > 0) {
+                        const est1RM = Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10;
+                        rmEstEl.textContent = `RM: ${est1RM}kg`;
+                    } else if (rmEstEl) {
+                        rmEstEl.textContent = '';
                     }
                 }
             }
         });
 
-        // 既存の change, keydown リスナーは fallback/メモ用に残すが
-        // input-number クラスから readonly を付けたためキーボード入力には反応しない。
-
-        // 入力値の変更（主にメモ等）
-        container.addEventListener('change', (e) => {
-            if (e.target.dataset.field === 'memo') {
-                const exIdx = parseInt(e.target.dataset.ex);
-                _active.exercises[exIdx].memo = e.target.value;
-                _save();
-            }
-        });
-
-        // Enter キーでblur
+        // Enter キーでblur処理
         container.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && e.target.classList.contains('input-number')) {
                 e.target.blur();
@@ -458,15 +451,6 @@ const Workout = (() => {
                 _active.exercises[exIdx].showMemo = !_active.exercises[exIdx].showMemo;
                 _save();
                 _renderWorkoutUI();
-            }
-        });
-
-        // メモ変更はEvent委任でキャプチャ
-        container.addEventListener('input', (e) => {
-            if (e.target.dataset.field === 'memo') {
-                const exIdx = parseInt(e.target.dataset.ex);
-                _active.exercises[exIdx].memo = e.target.value;
-                _save();
             }
         });
 

@@ -10,101 +10,106 @@ const Dashboard = (() => {
 
   function render() {
     const container = document.getElementById('dashboard-content');
-    const profile = DataManager.getProfile();
-    const active = DataManager.getActiveWorkout();
-    const summary = DataManager.getWeeklySummary();
-    const recent = DataManager.getRecentWorkouts(5);
-    const templates = DataManager.getTemplates();
+    if (!container) return;
 
-    let html = '';
+    try {
+      const profile = DataManager.getProfile();
+      const active = DataManager.getActiveWorkout();
+      const summary = DataManager.getWeeklySummary();
+      const recent = DataManager.getRecentWorkouts(5);
+      const templates = DataManager.getTemplates();
 
-    // --- 挨拶ヘッダー（日付表示を削除） ---
-    html += `
-      <div class="greeting-header">
-      </div>
-    `;
+      let html = '';
 
-    // --- 進行中ワークアウト復帰バナー ---
-    if (active) {
-      const elapsed = Date.now() - active.startTime;
+      // --- 挨拶ヘッダー（日付表示を削除） ---
       html += `
-        <div class="resume-banner" id="resume-banner" style="margin-bottom: 12px; padding: 12px; min-height: 48px;">
-          <div class="resume-info">
-            <h3 style="font-size: 0.9rem;">⚡ 進行中のワークアウトがあります</h3>
-            <p style="font-size: 0.75rem;">経過時間: ${UI.formatTimer(elapsed)}</p>
-          </div>
-          <button class="btn btn-primary btn-sm btn-resume" id="resume-workout-btn">再開する</button>
-          <button class="btn-dismiss" id="dismiss-workout-btn" aria-label="破棄">×</button>
+        <div class="greeting-header">
         </div>
       `;
-    }
 
-    // --- 月間カレンダー ---
-    html += _renderMonthlyCalendar();
-
-    // --- 部位別経過日数 ---
-    html += _renderBodyPartElapsed();
-
-    // --- BIG3 推定MAX ---
-    html += _renderBig3Max();
-
-    // 週間サマリー（今週のトレーニング日数、連続日数のカードは削除）
-    // 週間ボリュームはカレンダーの横に表示するためここでは何も表示しない
-
-    // --- ワークアウト開始ボタン ---
-    const emptyClass = recent.length === 0 ? 'empty-state-cta' : '';
-    html += `
-      <div class="${emptyClass}">
-        <button class="btn start-workout-btn" id="start-workout-btn" style="margin-bottom:8px;">🏋️ ワークアウト開始 🏋️</button>
-      </div>
-    `;
-
-    // --- ルーティン（テンプレート）から開始 ---
-    if (templates.length > 0) {
-      html += `<h2 class="section-title">ルーティンから開始</h2>
-               <div class="template-list" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;">`;
-      for (const t of templates) {
+      // --- 進行中ワークアウト復帰バナー ---
+      if (active) {
+        const elapsed = Date.now() - active.startTime;
         html += `
-          <div class="card card-compact card-clickable start-template-btn" data-id="${t.id}" style="min-width:120px;flex:0 0 auto;border:1px solid var(--color-border); padding: 8px;">
-            <div style="font-size:0.85rem;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
-            <div style="font-size:0.7rem;color:var(--color-text-secondary);">${t.exercises.length}種目</div>
+          <div class="resume-banner" id="resume-banner" style="margin-bottom: 12px; padding: 12px; min-height: 48px;">
+            <div class="resume-info">
+              <h3 style="font-size: 0.9rem;">⚡ 進行中のワークアウトがあります</h3>
+              <p style="font-size: 0.75rem;">経過時間: ${UI.formatTimer(elapsed)}</p>
+            </div>
+            <button class="btn btn-primary btn-sm btn-resume" id="resume-workout-btn">再開する</button>
+            <button class="btn-dismiss" id="dismiss-workout-btn" aria-label="破棄">×</button>
           </div>
         `;
       }
-      html += `</div>`;
-    }
 
-    // 最初のワークアウトを記録しようメッセージを削除
+      // --- 月間カレンダー ---
+      html += _renderMonthlyCalendar();
 
-    // --- 最近のワークアウト ---
-    if (recent.length > 0) {
-      html += `<h2 class="section-title">最近のワークアウト</h2>
-               <div style="max-height: 220px; overflow-y: auto; padding-right: 4px; padding-bottom: 24px;">`;
-      for (const w of recent) {
-        const cats = DataManager.getWorkoutCategories(w);
-        const vol = DataManager.calcWorkoutVolume(w);
-        const dur = DataManager.calcDuration(w);
-        const sets = DataManager.calcCompletedSets(w);
-        const date = w.date || DataManager.getTrainingDate(w.startTime);
-        html += `
-          <div class="card card-compact card-clickable recent-workout-card" data-workout-id="${w.id}" data-date="${date}">
-            <div class="workout-meta">
-              <div class="workout-date">${UI.formatDate(date)}</div>
-              <div class="workout-chips">${cats.map(c => UI.categoryChipHTML(c)).join('')}</div>
-              <div class="workout-stats">
-                <span>${w.exercises.length}種目 / ${sets}セット</span>
-                <span>${UI.formatVolume(vol)} kg</span>
-                ${dur > 0 ? `<span>${UI.formatDuration(dur)}</span>` : ''}
+      // --- 部位別経過日数 ---
+      html += _renderBodyPartElapsed();
+
+      // --- BIG3 推定MAX ---
+      html += _renderBig3Max();
+
+      // 週間サマリー（今週のトレーニング日数、連続日数のカードは削除）
+      // 週間ボリュームはカレンダーの横に表示するためここでは何も表示しない
+
+      // --- ワークアウト開始ボタン ---
+      const emptyClass = recent.length === 0 ? 'empty-state-cta' : '';
+      html += `
+        <div class="${emptyClass}">
+          <button class="btn start-workout-btn" id="start-workout-btn" style="margin-bottom:8px;">🏋️ ワークアウト開始 🏋️</button>
+        </div>
+      `;
+
+      // --- ルーティン（テンプレート）から開始 ---
+      if (templates && templates.length > 0) {
+        html += `<h2 class="section-title">ルーティンから開始</h2>
+                 <div class="template-list" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;">`;
+        for (const t of templates) {
+          html += `
+            <div class="card card-compact card-clickable start-template-btn" data-id="${t.id}" style="min-width:120px;flex:0 0 auto;border:1px solid var(--color-border); padding: 8px;">
+              <div style="font-size:0.85rem;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
+              <div style="font-size:0.7rem;color:var(--color-text-secondary);">${(t.exercises || []).length}種目</div>
+            </div>
+          `;
+        }
+        html += `</div>`;
+      }
+
+      // --- 最近のワークアウト ---
+      if (recent && recent.length > 0) {
+        html += `<h2 class="section-title">最近のワークアウト</h2>
+                 <div style="max-height: 220px; overflow-y: auto; padding-right: 4px; padding-bottom: 24px;">`;
+        for (const w of recent) {
+          const cats = DataManager.getWorkoutCategories(w);
+          const vol = DataManager.calcWorkoutVolume(w);
+          const dur = DataManager.calcDuration(w);
+          const sets = DataManager.calcCompletedSets(w);
+          const date = w.date || DataManager.getTrainingDate(w.startTime);
+          html += `
+            <div class="card card-compact card-clickable recent-workout-card" data-workout-id="${w.id}" data-date="${date}">
+              <div class="workout-meta">
+                <div class="workout-date">${UI.formatDate(date)}</div>
+                <div class="workout-chips">${cats.map(c => UI.categoryChipHTML(c)).join('')}</div>
+                <div class="workout-stats">
+                  <span>${(w.exercises || []).length}種目 / ${sets}セット</span>
+                  <span>${UI.formatVolume(vol)} kg</span>
+                  ${dur > 0 ? `<span>${UI.formatDuration(dur)}</span>` : ''}
+                </div>
               </div>
             </div>
-          </div>
-        `;
+          `;
+        }
+        html += `</div>`;
       }
-      html += `</div>`;
-    }
 
-    container.innerHTML = html;
-    _bindEvents();
+      container.innerHTML = html;
+      _bindEvents();
+    } catch (e) {
+      console.error("Dashboard render failed: ", e);
+      container.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--color-danger);">ダッシュボードの読み込み中にエラーが発生しました。<br><br><span style="font-size: 0.7rem;">${e.message}</span></div>`;
+    }
   }
 
   function _renderMonthlyCalendar() {
