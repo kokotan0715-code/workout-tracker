@@ -191,8 +191,8 @@ const Workout = (() => {
               <span style="position:absolute; right:4px; top:50%; transform:translateY(-50%); color:var(--color-text-hint); font-size:0.75rem; pointer-events:none;">回</span>
             </div>
           </div>
-          <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap: 4px;">
-             <span class="set-1rm-est" style="font-size:0.55rem; color:var(--color-gold); min-width:30px; text-align:center;">
+          <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap: 8px;">
+             <span class="set-1rm-est" style="font-size:0.75rem; font-weight:600; color:var(--color-gold); min-width:3.5rem; text-align:right;">
                  ${(set.weight > 0 && set.reps > 0) ? `RM: ${Number(set.reps) === 1 ? set.weight : Math.round(set.weight * (1 + set.reps / 40) * 10) / 10}kg` : ''}
              </span>
              <button class="btn btn-ghost btn-icon btn-sm"
@@ -517,19 +517,18 @@ const Workout = (() => {
         _renderWorkoutUI();
     }
 
-    function _deleteSet(exIdx, setIdx) {
+    async function _deleteSet(exIdx, setIdx) {
         const ex = _active.exercises[exIdx];
         if (!ex || ex.sets.length <= 1) {
             UI.showToast('最後の1セットは削除できません。不要な場合は種目ごと削除してください。', 'error', 4000);
             return;
         }
-        UI.confirm('セット削除', 'このセットを削除しますか？', '削除', 'キャンセル', true).then(res => {
-            if (res) {
-                ex.sets.splice(setIdx, 1);
-                _save();
-                _renderWorkoutUI();
-            }
-        });
+        const res = await UI.confirm('セット削除', 'このセットを削除しますか？', '削除', 'キャンセル', true);
+        if (res) {
+            ex.sets.splice(setIdx, 1);
+            _save();
+            _renderWorkoutUI();
+        }
     }
 
     function _addSet(exIdx) {
